@@ -6,6 +6,7 @@ use maverick_os::runtime::{Channel, Service, ServiceContext, async_trait, Callba
 use maverick_os::hardware;
 use maverick_os::air::AirService;
 use maverick_os::State;
+use maverick_os::air::air;
 
 use air::orange_name::OrangeName;
 use air::server::Request;

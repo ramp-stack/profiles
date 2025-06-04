@@ -2744,9 +2744,11 @@ dependencies = [
 name = "profiles"
 version = "0.1.0"
 dependencies = [
+ "maverick_os",
  "pelican_ui",
  "pelican_ui_std",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
