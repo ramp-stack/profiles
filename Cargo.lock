@@ -64,8 +64,6 @@ dependencies = [
 [[package]]
 name = "air"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d75bb88271334af887419f743449198cef735aa40c567f86682d45fe6351ef8c"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1900,8 +1898,6 @@ dependencies = [
 [[package]]
 name = "maverick_os"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23d797dd2c19f9770a9dc7c7da16814f4364970d5ba0f447dd47fd67918bbbcf"
 dependencies = [
  "air",
  "async-trait",
@@ -2568,15 +2564,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pelican_ui_profiles"
-version = "0.1.0"
-dependencies = [
- "pelican_ui",
- "pelican_ui_std",
- "serde",
-]
-
-[[package]]
 name = "pelican_ui_std"
 version = "1.0.6"
 dependencies = [
@@ -2751,6 +2738,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "02b3e5e68a3a1a02aad3ec490a98007cbc13c37cbe84a3cd7b8e406d76e7f778"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "profiles"
+version = "0.1.0"
+dependencies = [
+ "pelican_ui",
+ "pelican_ui_std",
+ "serde",
 ]
 
 [[package]]
