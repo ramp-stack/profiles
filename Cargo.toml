@@ -5,5 +5,5 @@ edition = "2024"
 
 [dependencies]
 pelican_ui = {path = "../pelican_ui" }
-rust_on_rails = {path="../rust_on_rails"}
+pelican_ui_std = {path = "../pelican_ui_std" }
 serde = "1.0.219"

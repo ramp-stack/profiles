@@ -1,13 +1,16 @@
-use rust_on_rails::prelude::*;
-use pelican_ui::prelude::*;
+use pelican_ui::drawable::Color;
+use pelican_ui::Context;
 
-pub trait ListItemProfiles {
-    fn credential(ctx: &mut Context, title: &str, subtitle: &str, color: Color) -> Self;
-}
+use pelican_ui_std::{
+    ListItem,
+    AvatarContent,
+    AvatarIconStyle,
+};
 
-impl ListItemProfiles for ListItem {
-    fn credential(ctx: &mut Context, title: &str, subtitle: &str, color: Color) -> Self {
-        let white = ctx.get::<PelicanUI>().theme.colors.shades.white;
+pub struct ListItemProfiles;
+impl ListItemProfiles {
+    pub fn credential(ctx: &mut Context, title: &str, subtitle: &str, color: Color) -> ListItem {
+        let white = ctx.theme.colors.shades.white;
         let icon = AvatarContent::Icon("credential", AvatarIconStyle::Custom(color, white));
         ListItem::new(ctx, false, title, None, Some(subtitle), None, None, None, None, Some(icon), None, move |_ctx: &mut Context| {})
     }

@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 
-mod components;
+pub mod components;
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Profile {
@@ -10,9 +10,3 @@ pub struct Profile {
     pub blocked_dids: Vec<String>,
     // Bitcoin Wallet Associated???
 }
-
-pub mod prelude {
-    pub use crate::Profile;
-    pub use crate::components::*;
-}
-
