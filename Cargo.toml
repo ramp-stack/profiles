@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+log = "0.4.27"
 maverick_os = {path = "../maverick_os" }
 pelican_ui = {path = "../pelican_ui" }
 pelican_ui_std = {path = "../pelican_ui_std" }
