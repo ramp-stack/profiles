@@ -23,7 +23,7 @@ pub struct Profiles(pub BTreeMap<OrangeName, Profile>);
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
 pub struct Name(pub Option<OrangeName>);
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ProfileRequest {
     Remove(OrangeName),
     Add(OrangeName),
