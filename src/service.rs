@@ -18,10 +18,10 @@ use serde::{Serialize, Deserialize};
 static PROFILE: LazyLock<Id> = LazyLock::new(|| Id::hash(&"ProfileV1".to_string()));
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
-struct Profiles(BTreeMap<OrangeName, Profile>);
+pub struct Profiles(pub BTreeMap<OrangeName, Profile>);
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
-struct Name(Option<OrangeName>);
+pub struct Name(pub Option<OrangeName>);
 
 #[derive(Serialize, Deserialize)]
 pub enum ProfileRequest {
