@@ -18,8 +18,7 @@ use std::fs;
 
 
 pub fn generate_name(input: &str) -> String {
-    let adjectives = load_words("assets/adjectives.txt");
-    let nouns = load_words("assets/nouns.txt");
+    let (adjectives, nouns) = load_words();
     let hash = Sha256::digest(input.as_bytes());
     let adj_index = (u16::from_be_bytes([hash[0], hash[1]]) as usize) % adjectives.len();
     let noun_index = (u16::from_be_bytes([hash[2], hash[3]]) as usize) % nouns.len();
@@ -36,11 +35,16 @@ fn capitalize(word: &str) -> String {
     }
 }
 
-fn load_words(path: &str) -> Vec<String> {
-    fs::read_to_string(path)
-        .unwrap()
+fn load_words() -> (Vec<String>, Vec<String>) {
+    let adjectives = include_str!("../assets/adjectives.txt")
         .lines()
         .filter(|s| !s.trim().is_empty())
         .map(|s| s.trim().to_string())
-        .collect()
+        .collect();
+    let nouns = include_str!("../assets/animals.txt")
+        .lines()
+        .filter(|s| !s.trim().is_empty())
+        .map(|s| s.trim().to_string())
+        .collect();
+    (adjectives, nouns)
 }
