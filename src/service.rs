@@ -98,8 +98,8 @@ impl Service for ProfileService {
                     Some(id) => {air.update_public(id, item).await?;},
                     None => {self.id = Some(air.create_public(item).await?);}
                 }
-                channel.send(serde_json::to_string(&(name, profile, true)).unwrap());
             }
+            channel.send(serde_json::to_string(&(name, profile, true)).unwrap());
 
             let clients = self.listening.iter().map(|name| Client::read_public(Filter::new(None, Some(name.clone()), Some(*PROFILE), None))).collect::<Vec<_>>();
             let batch = Request::batch(clients.iter().map(|c| c.build_request()).collect());
