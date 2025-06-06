@@ -3,6 +3,7 @@ use serde::{Serialize, Deserialize};
 pub mod components;
 pub mod service;
 pub mod plugin;
+pub mod events;
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Profile {
