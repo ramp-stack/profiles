@@ -3,6 +3,8 @@ use pelican_ui::Context;
 use pelican_ui::ImageOrientation;
 use base64::{engine::general_purpose, Engine};
 
+use crate::plugin::{ProfilePlugin, ProfileRequest};
+
 use crate::service::Profiles;
 use maverick_os::air::air;
 use air::orange_name::OrangeName;
@@ -37,6 +39,22 @@ impl AvatarProfiles {
     pub fn user(ctx: &mut Context, orange_name: &OrangeName) -> Avatar {
         let content = AvatarContentProfiles::from_orange_name(ctx, orange_name);
         Avatar::new(ctx, content, None, false, 128.0, None)
+    }
+
+    pub fn try_update(ctx: &mut Context, this: &mut Avatar, result: Result<(Vec<u8>, ImageOrientation), std::sync::mpsc::TryRecvError>) {
+        if let Ok((bytes, orientation)) = result {
+            if let Ok(dynamic) =  image::load_from_memory(&bytes) {
+                let image = orientation.apply_to(image::DynamicImage::ImageRgba8(dynamic.to_rgba8()));
+                let mut png_bytes = Vec::new();
+                image.write_to(&mut std::io::Cursor::new(&mut png_bytes), image::ImageFormat::Png).unwrap();
+                let base64_png = general_purpose::STANDARD.encode(&png_bytes);
+
+                ctx.get::<ProfilePlugin>().request(ProfileRequest::InsertField("avatar".to_string(), base64_png));
+                let asset_image = ctx.assets.add_image(image.into());
+
+                this.set_content(AvatarContent::Image(asset_image));
+            }
+        }
     }
 }
 

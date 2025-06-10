@@ -2,7 +2,7 @@ use std::collections::{BTreeSet, BTreeMap};
 use std::sync::LazyLock;
 use std::time::Duration;
 
-use maverick_os::runtime::{Channel, Service, ServiceContext, async_trait, Callback};
+use maverick_os::runtime::{Channel, Service, ServiceContext, async_trait, Callback, self};
 use maverick_os::hardware;
 use maverick_os::air::AirService;
 use maverick_os::State;
@@ -62,7 +62,7 @@ impl Service for ProfileService {
         }
     }
 
-    async fn run(&mut self, ctx: &mut ServiceContext, channel: &mut Channel) -> Duration {
+    async fn run(&mut self, ctx: &mut ServiceContext, channel: &mut Channel) -> Result<Duration, runtime::Error> {
         match async {
             let mut mutated = false;
 
@@ -116,7 +116,7 @@ impl Service for ProfileService {
             Err(e) => log::error!("{:?}", e)
         }
 
-        Duration::from_secs(5)
+        Ok(Duration::from_secs(5))
     }
 
     fn callback(&self) -> Box<Callback> {Box::new(|state: &mut State, response: String| {
