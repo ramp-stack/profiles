@@ -14,7 +14,6 @@ use air::storage::{PublicItem, Filter, Client};
 use air::Id;
 use serde::{Serialize, Deserialize};
 
-
 static PROFILE: LazyLock<Id> = LazyLock::new(|| Id::hash(&"ProfileV1".to_string()));
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]

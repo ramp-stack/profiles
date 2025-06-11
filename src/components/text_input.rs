@@ -1,7 +1,7 @@
      
 use pelican_ui::Context;
 
-use pelican_ui_std::{ TextInput };
+use pelican_ui_std::{ TextInput, InputState };
 
 const NO_ICON: Option<(&str, fn(&mut Context, &mut String))> = None::<(&'static str, fn(&mut Context, &mut String))>;
 
