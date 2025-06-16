@@ -2,7 +2,7 @@ use pelican_ui::Context;
 
 use crate::OrangeName;
 use crate::service::Profile;
-use crate::pages::{BlockUser, UnblockUser};
+// use crate::pages::{BlockUser, UnblockUser};
 
 use std::sync::{Arc, Mutex};
 
@@ -13,29 +13,23 @@ impl IconButtonProfiles {
     pub fn block(
         ctx: &mut Context,
         orange_name: OrangeName,
-        account_return: Arc<Mutex<Option<(Box<dyn AppPage>, bool)>>>,
         is_blocked: bool,
+        on_exit: impl FnMut(&mut Context) + 'static,
     ) -> (&'static str, Box<dyn FnMut(&mut Context)>) {
         let label = if is_blocked { "unblock" } else { "block" };
         let closure = Box::new(move |ctx: &mut Context| {
-            let (page, with_nav) = match is_blocked { 
-                true => {
-                    let (page, with_nav) = UnblockUser::new(ctx, &orange_name, account_return.lock().unwrap().take().unwrap());
-                    (page.into_boxed(), with_nav)
-                },
-                false => { 
-                    let (page, with_nav) = BlockUser::new(ctx, &orange_name, account_return.lock().unwrap().take().unwrap());
-                    (page.into_boxed(), with_nav)
-                }
-            };
+            // let application_page = match is_blocked { 
+            //     true => UnblockUser::new(ctx, &orange_name, account_return.lock().unwrap().take().unwrap()),
+            //     false => BlockUser::new(ctx, &orange_name, account_return.lock().unwrap().take().unwrap())
+            // };
 
-            ctx.trigger_event(NavigateEvent(Some(page), with_nav));
+            // ctx.trigger_event(NavigateEvent::new(application_page));
         });
 
         (label, closure)
     }
 
-    pub fn messages(ctx: &mut Context, orange_name: OrangeName, account_return: Arc<Mutex<Option<(Box<dyn AppPage>, bool)>>>) -> (&'static str, Box<dyn FnMut(&mut Context)>) {
+    pub fn messages(ctx: &mut Context, orange_name: OrangeName, on_exit: impl FnMut(&mut Context) + 'static,) -> (&'static str, Box<dyn FnMut(&mut Context)>) {
         let closure = Box::new(move |ctx: &mut Context| {
             // let mut rooms = ctx.state().get::<Rooms>();
             // for (id, room) in rooms.0.iter() {
@@ -60,7 +54,7 @@ impl IconButtonProfiles {
         ("messages", closure)
     }
 
-    pub fn bitcoin(ctx: &mut Context) -> (&'static str, Box<dyn FnMut(&mut Context)>) {
+    pub fn bitcoin(ctx: &mut Context, on_exit: impl FnMut(&mut Context) + 'static,) -> (&'static str, Box<dyn FnMut(&mut Context)>) {
         let closure = Box::new(move |ctx: &mut Context| {
             // let page = Amount::new(ctx);
             // ctx.trigger_event(NavigateEvent::new(page));

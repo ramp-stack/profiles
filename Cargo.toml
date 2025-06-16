@@ -6,6 +6,8 @@ edition = "2024"
 [dependencies]
 log = "0.4.27"
 maverick_os = {path = "../maverick_os" }
+#maverick_os = "0.1.1"
+
 pelican_ui = {path = "../pelican_ui" }
 pelican_ui_std = {path = "../pelican_ui_std" }
 serde = "1.0.219"

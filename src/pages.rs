@@ -33,11 +33,18 @@ use serde_json::{json, Value};
 
 use image::ImageFormat;
 
-#[derive(Debug, Component, AppPage)]
+#[derive(Debug, Component)]
 pub struct Account(Stack, Page, #[skip] Receiver<(Vec<u8>, ImageOrientation)>, #[skip] ButtonState);
 
+impl AppPage for Account {
+    fn has_nav(&self) -> bool { true }
+    fn navigate(mut self: Box<Self>, ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
+        Err(self)
+    }
+}
+
 impl Account {
-    pub fn new(ctx: &mut Context) -> (Self, bool) {
+    pub fn new(ctx: &mut Context) -> Self {
         let orange_name = ctx.state().get::<Name>().0.unwrap();
         let my_username = ProfileHelper::get_username(ctx);
         let my_biography = ProfileHelper::get_biography(ctx);
@@ -58,7 +65,7 @@ impl Account {
         let content = Content::new(Offset::Start, vec![Box::new(avatar), Box::new(name_input), Box::new(bio_input), Box::new(orange_name_item), Box::new(address_item)]);
         let header = Header::home(ctx, "Account");
 
-        (Account(Stack::center(), Page::new(header, content, Some(bumper)), receiver, ButtonState::Default), true)
+        Account(Stack::center(), Page::new(header, content, Some(bumper)), receiver, ButtonState::Default)
     }
 }
 
@@ -97,222 +104,190 @@ impl OnEvent for Account {
     }
 }
 
-#[derive(Debug, Component, AppPage)]
-pub struct UserAccount(Stack, Page);
+#[derive(Debug, Component)]
+pub struct UserAccount(Stack, Page, #[skip] Option<Box<dyn AppPage>>);
 impl OnEvent for UserAccount {}
 
+impl AppPage for UserAccount {
+    fn has_nav(&self) -> bool { false }
+    fn navigate(mut self: Box<Self>, ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
+        match index {
+            0 => Ok(self.2.take().unwrap()),
+            _ => Err(self)
+        }
+    }
+}
+
 impl UserAccount {
-    pub fn new(
-        ctx: &mut Context,
-        orange_name: &OrangeName,
-        account_return: (Box<dyn AppPage>, bool),
-    ) -> (Self, bool) {
+    pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
         let profiles = ctx.state().get::<Profiles>();
-        let user = profiles.0.get(orange_name).unwrap();
-        let username = user.get("username").unwrap();
+        let user = profiles.0.get(&orange_name).unwrap();
 
         let my_orange_name = ProfileHelper::get_my_profile(ctx).0;
         let is_blocked = ProfileHelper::has_blocked(ctx, &orange_name, &my_orange_name);
 
-        let account_return = Arc::new(Mutex::new(Some(account_return)));
+        let exit = move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0));
 
-        let messages = IconButtonProfiles::messages(ctx, orange_name.clone(), account_return.clone());
-        let bitcoin = IconButtonProfiles::bitcoin(ctx);
-        let block = IconButtonProfiles::block(ctx, orange_name.clone(), account_return.clone(), is_blocked);
-
+        let bitcoin = IconButtonProfiles::bitcoin(ctx, exit);
+        let messages = IconButtonProfiles::messages(ctx, orange_name.clone(), exit);
+        let block = IconButtonProfiles::block(ctx, orange_name.clone(), is_blocked, exit);
         let buttons = IconButtonRow::new(ctx, vec![messages, bitcoin, block]);
-
-
-        let back = IconButton::navigation(ctx, "left", move |ctx| {
-            let page = account_return.clone().lock().unwrap().take().unwrap();
-            ctx.trigger_event(NavigateEvent(Some(page.0), page.1));
-        });
 
         let address = DataItemProfiles::address_item(ctx, "");
         let orange_name_item = DataItemProfiles::orange_name_item(ctx, &orange_name);
         let about_me = DataItemProfiles::biography_item(ctx, user);
         let avatar = AvatarProfiles::user(ctx, &orange_name);
-
-        let header = Header::stack(ctx, Some(back), &username, None);
         let content = Content::new(Offset::Start, vec![Box::new(avatar), Box::new(buttons), Box::new(about_me), Box::new(orange_name_item), Box::new(address)]);
 
-        (UserAccount(Stack::center(), Page::new(header, content, None)), false)
+        let back = IconButton::navigation(ctx, "left", exit);
+        let header = Header::stack(ctx, Some(back), &user.get("username").unwrap(), None);
+        UserAccount(Stack::center(), Page::new(header, content, None), Some(on_exit))
     }
-
 }
 
-#[derive(Debug, Component, AppPage)]
-pub struct BlockUser(Stack, Page);
+#[derive(Debug, Component)]
+pub struct BlockUser(Stack, Page, #[skip] Option<Box<dyn AppPage>>, #[skip] OrangeName);
 impl OnEvent for BlockUser {}
 
+impl AppPage for BlockUser {
+    fn has_nav(&self) -> bool { false }
+    fn navigate(mut self: Box<Self>, ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
+        match index {
+            0 => Ok(self.2.take().unwrap()),
+            1 => Ok(Box::new(UserBlocked::new(ctx, self.3, self.2.take().unwrap()))),
+            _ => Err(self)
+        }
+    }
+}
+
 impl BlockUser {
-    pub fn new(ctx: &mut Context, orange_name: &OrangeName, account_return: (Box<dyn AppPage>, bool)) -> (Self, bool) {
+    pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
         let profiles = ctx.state().get::<Profiles>();
         let user = profiles.0.get(&orange_name).unwrap();
 
         let theme = &ctx.theme;
         let text_size = theme.fonts.size.h4;
 
-        let account_return = Arc::new(Mutex::new(Some(account_return)));
-
-        let confirm_orange_name = orange_name.clone();
-        let confirm_account_return = account_return.clone();
-        let confirm = Button::primary(ctx, "Block", move |ctx: &mut Context| {
-            let page = UserBlocked::new(ctx, &confirm_orange_name, confirm_account_return.lock().unwrap().take().unwrap());
-            ctx.trigger_event(NavigateEvent::new(page))
-        });
-
-        let cancel_orange_name = orange_name.clone();
-        let cancel_account_return = account_return.clone();
-        let cancel = Button::close(ctx, "Cancel", move |ctx: &mut Context| {
-            let page = UserAccount::new(ctx, &cancel_orange_name, cancel_account_return.lock().unwrap().take().unwrap());
-            ctx.trigger_event(NavigateEvent::new(page))
-        });
-
-        let back_orange_name = orange_name.clone();
-        let back_account_return = account_return.clone();
-        let back = IconButton::navigation(ctx, "left", move |ctx: &mut Context| {
-            let page = UserAccount::new(ctx, &back_orange_name, back_account_return.lock().unwrap().take().unwrap());
-            ctx.trigger_event(NavigateEvent::new(page))
-        });
+        let confirm = Button::primary(ctx, "Block", move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(1)));
+        let cancel = Button::close(ctx, "Cancel", move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0)));
+        let back = IconButton::navigation(ctx, "left", move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0)));
 
         let bumper = Bumper::double_button(ctx, cancel, confirm);
-        let avatar = AvatarProfiles::new_with_block(ctx, orange_name);
+        let avatar = AvatarProfiles::new_with_block(ctx, &orange_name);
 
         let username = user.get("username").unwrap();
         let msg = format!("Are you sure you want to block {}?", username);
         let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center);
         let content = Content::new(Offset::Center, vec![Box::new(avatar), Box::new(text)]);
         let header = Header::stack(ctx, Some(back), "Block user", None);
-        (BlockUser(Stack::default(), Page::new(header, content, Some(bumper))), false)
+
+        BlockUser(Stack::default(), Page::new(header, content, Some(bumper)), Some(on_exit), orange_name)
     }
 }
 
-#[derive(Debug, Component, AppPage)]
-pub struct UserBlocked(Stack, Page);
+#[derive(Debug, Component)]
+pub struct UserBlocked(Stack, Page, #[skip] Option<Box<dyn AppPage>>);
 impl OnEvent for UserBlocked {}
 
+impl AppPage for UserBlocked {
+    fn has_nav(&self) -> bool { false }
+    fn navigate(mut self: Box<Self>, ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
+        match index {
+            0 => Ok(self.2.take().unwrap()),
+            _ => Err(self)
+        }
+    }
+}
+
 impl UserBlocked {
-    pub fn new(ctx: &mut Context, orange_name: &OrangeName, account_return: (Box<dyn AppPage>, bool)) -> (Self, bool) {
+    pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
         let profiles = ctx.state().get::<Profiles>();
         let user = profiles.0.get(&orange_name).unwrap();
+        ProfileHelper::block(ctx, &orange_name);
 
-        ProfileHelper::block(ctx, orange_name);
-
-        let theme = &ctx.theme;
-        let text_size = theme.fonts.size.h4;
-        let account_return = Arc::new(Mutex::new(Some(account_return)));
-
-        let button_orange_name = orange_name.clone();
-        let button_account_return = account_return.clone();
-        let button = Button::close(ctx, "Done",  move |ctx: &mut Context| {
-            let page = UserAccount::new(ctx, &button_orange_name, button_account_return.lock().unwrap().take().unwrap());
-            ctx.trigger_event(NavigateEvent::new(page))
-        });
-
-        let bumper = Bumper::single_button(ctx, button);
-        let avatar = AvatarProfiles::new_with_block(ctx, orange_name);
-
+        let text_size = ctx.theme.fonts.size.h4;
         let username = user.get("username").unwrap();
         let msg = format!("{} has been blocked", username);
         let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center);
+        let avatar = AvatarProfiles::new_with_block(ctx, &orange_name);
         let content = Content::new(Offset::Center, vec![Box::new(avatar), Box::new(text)]);
 
-        let close_orange_name = orange_name.clone();
-        let close_account_return = account_return.clone();
-        let close = IconButton::close(ctx,  move |ctx: &mut Context| {
-            let page = UserAccount::new(ctx, &close_orange_name, close_account_return.lock().unwrap().take().unwrap());
-            ctx.trigger_event(NavigateEvent::new(page))
-        });
-
-        let header = Header::stack(ctx, Some(close), "User blocked", None);
-        (UserBlocked(Stack::default(), Page::new(header, content, Some(bumper))), false)
-    }
-}
-
-#[derive(Debug, Component, AppPage)]
-pub struct UnblockUser(Stack, Page);
-impl OnEvent for UnblockUser {}
-
-impl UnblockUser {
-    pub fn new(ctx: &mut Context, orange_name: &OrangeName, account_return: (Box<dyn AppPage>, bool)) -> (Self, bool) {
-        let profiles = ctx.state().get::<Profiles>();
-        let user = profiles.0.get(&orange_name).unwrap();
-
-        let text_size = ctx.theme.fonts.size.h4;
-
-        let account_return = Arc::new(Mutex::new(Some(account_return)));
-
-        let unblock_orange_name = orange_name.clone();
-        let unblock_account_return = account_return.clone();
-        let confirm = Button::primary(ctx, "Unblock", move |ctx: &mut Context| {
-            let page = UserUnblocked::new(ctx, &unblock_orange_name, unblock_account_return.lock().unwrap().take().unwrap());
-            ctx.trigger_event(NavigateEvent::new(page))
-        });
-
-        let cancel_orange_name = orange_name.clone();
-        let cancel_account_return = account_return.clone();
-        let cancel = Button::close(ctx, "Cancel", move |ctx: &mut Context| {
-            let page = UserAccount::new(ctx, &cancel_orange_name, cancel_account_return.lock().unwrap().take().unwrap());
-            ctx.trigger_event(NavigateEvent::new(page))
-        });
-
-        let back_orange_name = orange_name.clone();
-        let back_account_return = account_return.clone();
-        let back = IconButton::navigation(ctx, "left", move |ctx: &mut Context| {
-            let page = UserAccount::new(ctx, &back_orange_name, back_account_return.lock().unwrap().take().unwrap());
-            ctx.trigger_event(NavigateEvent::new(page))
-        });
-
-        let bumper = Bumper::double_button(ctx, cancel, confirm);
-        let avatar = AvatarProfiles::new_with_unblock(ctx, orange_name); 
-        
-        let username = user.get("username").unwrap();
-        let msg = format!("Are you sure you want to unblock {}?", username);
-        let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center);
-        let content = Content::new(Offset::Center, vec![Box::new(avatar), Box::new(text)]);
-        let header = Header::stack(ctx, Some(back), "Unblock user", None);
-        (UnblockUser(Stack::default(), Page::new(header, content, Some(bumper))), false)
-    }
-}
-
-#[derive(Debug, Component, AppPage)]
-pub struct UserUnblocked(Stack, Page);
-impl OnEvent for UserUnblocked {}
-
-impl UserUnblocked {
-    pub fn new(ctx: &mut Context, orange_name: &OrangeName, account_return: (Box<dyn AppPage>, bool)) -> (Self, bool) {
-        let profiles = ctx.state().get::<Profiles>();
-        let user = profiles.0.get(&orange_name).unwrap();
-
-        ProfileHelper::unblock(ctx, orange_name);
-
-        let text_size = ctx.theme.fonts.size.h4;
-        let account_return = Arc::new(Mutex::new(Some(account_return)));
-
-        let button_orange_name = orange_name.clone();
-        let button_account_return = account_return.clone();
-        let button = Button::close(ctx, "Done", move |ctx: &mut Context| {
-            let page = UserAccount::new(ctx, &button_orange_name, button_account_return.lock().unwrap().take().unwrap());
-            ctx.trigger_event(NavigateEvent::new(page))
-        });
+        let close = IconButton::close(ctx,  move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0)));
+        let button = Button::close(ctx, "Done", move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0)));
 
         let bumper = Bumper::single_button(ctx, button);
-        let avatar = AvatarProfiles::new_with_unblock(ctx, orange_name);
+        let header = Header::stack(ctx, Some(close), "User blocked", None);
+        UserBlocked(Stack::default(), Page::new(header, content, Some(bumper)), Some(on_exit))
+    }
+}
 
-        let username = user.get("username").unwrap();
-        let msg = format!("{} has been unblocked", username);
+#[derive(Debug, Component)]
+pub struct UnblockUser(Stack, Page, #[skip] Option<Box<dyn AppPage>>, #[skip] OrangeName);
+impl OnEvent for UnblockUser {}
+
+impl AppPage for UnblockUser {
+    fn has_nav(&self) -> bool { false }
+    fn navigate(mut self: Box<Self>, ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
+        match index {
+            0 => Ok(self.2.take().unwrap()),
+            1 => Ok(Box::new(UserUnblocked::new(ctx, self.3, self.2.take().unwrap()))),
+            _ => Err(self)
+        }
+    }
+}
+
+impl UnblockUser {
+    pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
+        let profiles = ctx.state().get::<Profiles>();
+        let user = profiles.0.get(&orange_name).unwrap();
+
+        let msg = format!("Are you sure you want to unblock {}?", user.get("username").unwrap());
+        let text_size = ctx.theme.fonts.size.h4;
         let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center);
+        let avatar = AvatarProfiles::new_with_unblock(ctx, &orange_name); 
         let content = Content::new(Offset::Center, vec![Box::new(avatar), Box::new(text)]);
 
-        let close_orange_name = orange_name.clone();
-        let close_account_return = account_return.clone();
-        let close = IconButton::close(ctx, move |ctx: &mut Context| {
-            let page = UserAccount::new(ctx, &close_orange_name, close_account_return.lock().unwrap().take().unwrap());
-            ctx.trigger_event(NavigateEvent::new(page))
-        });
+        let confirm = Button::primary(ctx, "Unblock", move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(1)));
+        let cancel = Button::close(ctx, "Cancel", move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0)));
+        let back = IconButton::navigation(ctx, "left", move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0)));
 
+        let bumper = Bumper::double_button(ctx, cancel, confirm);
+        let header = Header::stack(ctx, Some(back), "Unblock user", None);
+        UnblockUser(Stack::default(), Page::new(header, content, Some(bumper)), Some(on_exit), orange_name)
+    }
+}
+
+#[derive(Debug, Component)]
+pub struct UserUnblocked(Stack, Page, #[skip] Option<Box<dyn AppPage>>);
+impl OnEvent for UserUnblocked {}
+
+impl AppPage for UserUnblocked {
+    fn has_nav(&self) -> bool { false }
+    fn navigate(mut self: Box<Self>, ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
+        match index {
+            0 => Ok(self.2.take().unwrap()),
+            _ => Err(self)
+        }
+    }
+}
+
+impl UserUnblocked {
+    pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
+        let profiles = ctx.state().get::<Profiles>();
+        let user = profiles.0.get(&orange_name).unwrap();
+        ProfileHelper::unblock(ctx, &orange_name);
+
+        let msg = format!("{} has been unblocked", user.get("username").unwrap());
+        let text_size = ctx.theme.fonts.size.h4;
+        let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center);
+        let avatar = AvatarProfiles::new_with_unblock(ctx, &orange_name);
+        let content = Content::new(Offset::Center, vec![Box::new(avatar), Box::new(text)]);
+
+        let close = IconButton::close(ctx, move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0)));
+        let button = Button::close(ctx, "Done", move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0)));
+
+        let bumper = Bumper::single_button(ctx, button);
         let header = Header::stack(ctx, Some(close), "User unblocked", None);
-        (UserUnblocked(Stack::default(), Page::new(header, content, Some(bumper))), false)
+        UserUnblocked(Stack::default(), Page::new(header, content, Some(bumper)), Some(on_exit))
     }
 }
