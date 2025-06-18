@@ -1,11 +1,10 @@
 use pelican_ui::{Context, Plugin};
-use maverick_os::air::AirService;
 use maverick_os::runtime;
 use crate::OrangeName;
 pub use crate::service::{Profile, Profiles, ProfileRequest, ProfileService, Name};
 use serde_json::{Value, json};
+use std::hash::{DefaultHasher, Hasher, Hash};
 
-use sha2::{Digest, Sha256};
 use std::fs;
 
 pub struct ProfilePlugin(runtime::Context);
@@ -14,7 +13,7 @@ impl Plugin for ProfilePlugin {
 }
 impl ProfilePlugin {
     pub fn request(&mut self, request: ProfileRequest) {
-        self.0.send::<ProfileService>(serde_json::to_string(&request).unwrap())
+        self.0.send::<ProfileService>(&request)
     }
 }
 
@@ -91,9 +90,11 @@ pub struct NameGenerator;
 impl NameGenerator {
     pub fn new(input: &str) -> String {
         let (adjectives, nouns) = Self::load_words();
-        let hash = Sha256::digest(input.as_bytes());
-        let adj_index = (u16::from_be_bytes([hash[0], hash[1]]) as usize) % adjectives.len();
-        let noun_index = (u16::from_be_bytes([hash[2], hash[3]]) as usize) % nouns.len();
+        let mut hasher = DefaultHasher::new();
+        input.hash(&mut hasher);
+        let hash = hasher.finish();
+        let adj_index = ((hash % u16::MAX as u64) as usize) % adjectives.len();
+        let noun_index = ((hash / u16::MAX as u64) as usize) % nouns.len();
         let adj = Self::capitalize(&adjectives[adj_index]);
         let noun = Self::capitalize(&nouns[noun_index]);
         format!("{}{}", adj, noun)
