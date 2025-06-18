@@ -2,15 +2,13 @@ use std::collections::{BTreeSet, BTreeMap};
 use std::sync::LazyLock;
 use std::time::Duration;
 
-use maverick_os::runtime::{Channel, Service, ServiceContext, async_trait, Callback};
+use maverick_os::runtime::{Services, Service, ThreadContext, async_trait, self};
 use maverick_os::hardware;
-use maverick_os::air::AirService;
 use maverick_os::State;
-use maverick_os::air::air;
+use maverick_os::air::{Request, air, Service as AirService};
 
 use air::orange_name::OrangeName;
-use air::server::{Request, Error};
-use air::storage::{PublicItem, Filter, Client};
+use air::storage::{PublicItem, Filter};
 use air::Id;
 use serde::{Serialize, Deserialize};
 
@@ -36,7 +34,6 @@ pub type Profile = BTreeMap<String, String>;
 pub struct ProfileService{
     listening: BTreeSet<OrangeName>,
     profile: Option<Profile>,
-    name: Option<OrangeName>,
     id: Option<Id>
 }
 
@@ -51,79 +48,87 @@ impl ProfileService {
     }
 }
 
+#[derive(Debug)]
+struct MissingOrangeName;
+impl std::error::Error for MissingOrangeName {}
+impl std::fmt::Display for MissingOrangeName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {write!(f, "{:?}", self)}
+}
+
+impl Services for ProfileService {}
+
 #[async_trait]
 impl Service for ProfileService {
+    type Send = (OrangeName, Profile, bool);
+    type Receive = ProfileRequest;
+
     async fn new(_hardware: &mut hardware::Context) -> Self {
         ProfileService{
             listening: BTreeSet::new(),
             profile: None,
-            name: None,
             id: None
         }
     }
 
-    async fn run(&mut self, ctx: &mut ServiceContext, channel: &mut Channel) -> Duration {
-        match async {
-            let mut mutated = false;
+    async fn run(&mut self, ctx: &mut ThreadContext<Self::Send, Self::Receive>) -> Result<Option<Duration>, runtime::Error> {
+        let mut mutated = false;
 
-            let air = ctx.get::<AirService>();
-            if self.profile.is_none() {
-                let name = air.my_name();
-                self.name = Some(name.clone());
-                let item = air.read_public(Filter::new(None, Some(name.clone()), Some(*PROFILE), None)).await?.pop();
-                self.id = item.as_ref().map(|i| i.0);
-                let profile = item.and_then(|i| serde_json::from_slice(&i.2.payload).ok());
-                mutated = profile.is_none();
-                self.profile = Some(profile.unwrap_or(BTreeMap::new()));
-            }
+        let name = ctx.hardware.cache.get::<Option<OrangeName>>("OrangeName").await.ok_or(MissingOrangeName)?;
 
-            while let Some(request) = channel.receive() {
-                if let Ok(request) = serde_json::from_str(&request) {
-                    mutated = (matches!(request, ProfileRequest::InsertField(_,_)) || matches!(request, ProfileRequest::RemoveField(_)) || mutated);
-                    self.handle(request);
-                }
-            }
-
-            let name = self.name.clone().unwrap();
-            let profile = self.profile.as_ref().unwrap();
-            let endpoint = air.resolver.endpoint(&name, None, None).await?;
-
-            if mutated {
-                let item = PublicItem {
-                    protocol: *PROFILE,
-                    header: vec![],
-                    payload: serde_json::to_vec(&profile).unwrap(),
-                };
-                match self.id {
-                    Some(id) => {air.update_public(id, item).await?;},
-                    None => {self.id = Some(air.create_public(item).await?);}
-                }
-            }
-            channel.send(serde_json::to_string(&(name, profile, true)).unwrap());
-
-            let clients = self.listening.iter().map(|name| Client::read_public(Filter::new(None, Some(name.clone()), Some(*PROFILE), None))).collect::<Vec<_>>();
-            let batch = Request::batch(clients.iter().map(|c| c.build_request()).collect());
-            let responses = air.purser.send(&mut air.resolver, &endpoint, batch).await?.batch()?;
-            for (client, response) in clients.iter().zip(responses) {
-                let item = client.process_response(&mut air.resolver, response).await?.read_public().pop();
-                if let Some((name, profile)) = item.and_then(|i| Some((i.1, serde_json::from_slice::<Profile>(&i.2.payload).ok()?))) {
-                    channel.send(serde_json::to_string(&(name, profile, false)).unwrap());
-                }
-            }
-            Ok::<(), Error>(())
-        }.await {
-            Ok(()) => {},
-            Err(e) => log::error!("{:?}", e)
+        if self.profile.is_none() {
+            let item = ctx.blocking_request::<AirService>(Request::ReadPublic(Filter::new(None, Some(name.clone()), Some(*PROFILE), None))).await?.read_public().pop();
+            let profile = item.as_ref().and_then(|i| serde_json::from_slice(&i.2.payload).ok());
+            mutated = profile.is_none();
+            self.profile = Some(profile.unwrap_or(BTreeMap::new()));
+            self.id = item.as_ref().map(|i| i.0);
         }
 
-        Duration::from_secs(5)
+        while let Some((_, request)) = ctx.get_request() {
+            mutated = mutated || (matches!(request, ProfileRequest::InsertField(_,_)) || matches!(request, ProfileRequest::RemoveField(_)));
+            self.handle(request);
+        }
+
+        let profile = self.profile.as_ref().unwrap();
+
+        if mutated {
+            let item = PublicItem {
+                protocol: *PROFILE,
+                header: vec![],
+                payload: serde_json::to_vec(&profile).unwrap(),
+            };
+            match self.id {
+                Some(id) => {ctx.blocking_request::<AirService>(Request::UpdatePublic(id, item)).await?;},
+                None => {self.id = Some(ctx.blocking_request::<AirService>(Request::CreatePublic(item)).await?.create_public());}
+            }
+        }
+        ctx.callback((name, profile.clone(), true));
+
+        let mut requests: Vec<_> = self.listening.iter().map(|name| ctx.request::<AirService>(Request::ReadPublic(Filter::new(None, Some(name.clone()), Some(*PROFILE), None)))).collect();
+        loop {
+            let mut error = None;
+            requests.retain(|request| {
+                match ctx.check_request(request) {
+                    Some(Ok(processed)) => {
+                        if let Some((name, profile)) = processed.read_public().pop().and_then(|i|
+                            Some((i.1, serde_json::from_slice::<Profile>(&i.2.payload).ok()?))
+                        ) { ctx.callback((name, profile, false)); }
+                        false
+                    },
+                    Some(Err(e)) => {error = Some(e); false},
+                    None => true
+                }
+            });
+            if let Some(error) = error {return Err(error.into());}
+            if requests.is_empty() {break}
+        }
+
+        Ok(Some(Duration::from_secs(5)))
     }
 
-    fn callback(&self) -> Box<Callback> {Box::new(|state: &mut State, response: String| {
+    fn callback(state: &mut State, response: Self::Send) {
         let mut profiles = state.get::<Profiles>().0;
-        let (name, profile, me) = serde_json::from_str::<(OrangeName, Profile, bool)>(&response).unwrap();
-        if me {state.set(&Name(Some(name.clone())));}
-        profiles.insert(name, profile);
+        if response.2 {state.set(&Name(Some(response.0.clone())));}
+        profiles.insert(response.0, response.1);
         state.set(&Profiles(profiles));
-    })}
+    }
 }

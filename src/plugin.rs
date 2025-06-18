@@ -1,5 +1,4 @@
 use pelican_ui::{Context, Plugin};
-use maverick_os::air::AirService;
 use maverick_os::runtime;
 pub use crate::service::{ProfileRequest, ProfileService};
 
@@ -9,6 +8,6 @@ impl Plugin for ProfilePlugin {
 }
 impl ProfilePlugin {
     pub fn request(&mut self, request: ProfileRequest) {
-        self.0.send::<ProfileService>(serde_json::to_string(&request).unwrap())
+        self.0.send::<ProfileService>(&request)
     }
 }

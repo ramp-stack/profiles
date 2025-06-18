@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use std::hash::{DefaultHasher, Hasher, Hash};
 
 pub mod components;
 pub mod service;
@@ -14,15 +15,13 @@ pub struct Profile {
     // Bitcoin Wallet Associated???
 }
 
-use sha2::{Digest, Sha256};
-use std::fs;
-
-
 pub fn generate_name(input: &str) -> String {
     let (adjectives, nouns) = load_words();
-    let hash = Sha256::digest(input.as_bytes());
-    let adj_index = (u16::from_be_bytes([hash[0], hash[1]]) as usize) % adjectives.len();
-    let noun_index = (u16::from_be_bytes([hash[2], hash[3]]) as usize) % nouns.len();
+    let mut hasher = DefaultHasher::new();
+    input.hash(&mut hasher);
+    let hash = hasher.finish();
+    let adj_index = ((hash % u16::MAX as u64) as usize) % adjectives.len();
+    let noun_index = ((hash / u16::MAX as u64) as usize) % nouns.len();
     let adj = capitalize(&adjectives[adj_index]);
     let noun = capitalize(&nouns[noun_index]);
     format!("{}{}", adj, noun)
