@@ -12,7 +12,6 @@ use air::storage::{PublicItem, Filter};
 use air::Id;
 use serde::{Serialize, Deserialize};
 
-
 static PROFILE: LazyLock<Id> = LazyLock::new(|| Id::hash(&"ProfileV1".to_string()));
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
@@ -72,7 +71,6 @@ impl Service for ProfileService {
 
     async fn run(&mut self, ctx: &mut ThreadContext<Self::Send, Self::Receive>) -> Result<Option<Duration>, runtime::Error> {
         let mut mutated = false;
-
         let name = ctx.hardware.cache.get::<Option<OrangeName>>("OrangeName").await.ok_or(MissingOrangeName)?;
 
         if self.profile.is_none() {
