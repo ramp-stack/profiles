@@ -2,10 +2,10 @@ use std::collections::{BTreeSet, BTreeMap};
 use std::sync::LazyLock;
 use std::time::Duration;
 
-use maverick_os::runtime::{Services, Service, ThreadContext, async_trait, self};
-use maverick_os::hardware;
-use maverick_os::State;
-use maverick_os::air::{Request, air, Service as AirService};
+use pelican_ui::runtime::{Services, Service, ThreadContext, async_trait, self};
+use pelican_ui::hardware;
+use pelican_ui::State;
+use pelican_ui::air::{Request, air, Service as AirService};
 
 use air::orange_name::OrangeName;
 use air::storage::{PublicItem, Filter};

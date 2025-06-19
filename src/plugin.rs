@@ -1,5 +1,5 @@
 use pelican_ui::{Context, Plugin};
-use maverick_os::runtime;
+use pelican_ui::runtime;
 use crate::OrangeName;
 pub use crate::service::{Profile, Profiles, ProfileRequest, ProfileService, Name};
 use serde_json::{Value, json};

@@ -1,12 +1,12 @@
 use std::sync::mpsc::Sender;
 use pelican_ui::Context;
-use pelican_ui::ImageOrientation;
+use pelican_ui::hardware::ImageOrientation;
 use base64::{engine::general_purpose, Engine};
 
 use crate::plugin::{ProfilePlugin, ProfileRequest};
 
 use crate::service::Profiles;
-use maverick_os::air::air;
+use pelican_ui::air::air;
 use air::orange_name::OrangeName;
 
 use pelican_ui_std::{

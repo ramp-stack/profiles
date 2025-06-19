@@ -3,7 +3,8 @@
 use pelican_ui::events::{Event, OnEvent, Key, NamedKey, KeyboardState, KeyboardEvent, TickEvent};
 use pelican_ui::drawable::{Drawable, Component, Align, Span, Image};
 use pelican_ui::layout::{Area, SizeRequest, Layout};
-use pelican_ui::{Context, Component, ImageOrientation};
+use pelican_ui::{Context, Component};
+use pelican_ui::hardware::ImageOrientation;
 use crate::events::UpdateProfileEvent;
 use crate::OrangeName;
 use crate::service::{Name, Profiles, Profile};

@@ -6,5 +6,5 @@ pub mod plugin;
 pub mod events;
 pub mod pages;
 
-use maverick_os::air::air;
+use pelican_ui::air::air;
 pub use air::orange_name::OrangeName;
