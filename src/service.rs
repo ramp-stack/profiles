@@ -71,7 +71,6 @@ impl Service for ProfileService {
 
     async fn run(&mut self, ctx: &mut ThreadContext<Self::Send, Self::Receive>) -> Result<Option<Duration>, runtime::Error> {
         let mut mutated = false;
-        println!("Errored");
         if let Some(name) = ctx.hardware.cache.get::<Option<OrangeName>>("OrangeName").await {
             if self.profile.is_none() {
                 let item = ctx.blocking_request::<AirService>(Request::ReadPublic(Filter::new(None, Some(name.clone()), Some(*PROFILE), None))).await?.read_public().pop();
