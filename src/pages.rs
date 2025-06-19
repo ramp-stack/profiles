@@ -1,45 +1,37 @@
 #![allow(dead_code)]
 
-use pelican_ui::events::{Event, OnEvent, Key, NamedKey, KeyboardState, KeyboardEvent, TickEvent};
-use pelican_ui::drawable::{Drawable, Component, Align, Span, Image};
+use pelican_ui::events::{Event, OnEvent, TickEvent};
+use pelican_ui::drawable::{Drawable, Component, Align};
 use pelican_ui::layout::{Area, SizeRequest, Layout};
 use pelican_ui::{Context, Component};
 use pelican_ui::hardware::ImageOrientation;
 use crate::events::UpdateProfileEvent;
 use crate::OrangeName;
-use crate::service::{Name, Profiles, Profile};
-use crate::plugin::{ProfilePlugin, ProfileRequest, ProfileHelper};
+use crate::service::{Name, Profiles};
+use crate::plugin::ProfileHelper;
 use crate::components::{AvatarProfiles, AvatarContentProfiles, TextInputProfiles, DataItemProfiles, IconButtonProfiles};
 // use messages::{Rooms, Room};
 
 use pelican_ui_std::{
     AppPage, Stack, Page,
     Header, IconButton,
-    Avatar, AvatarContent,
-    AvatarIconStyle,
-    ExpandableText,
+    Avatar, ExpandableText,
     TextStyle, Content,
     Offset, TextInput,
-    Button, DataItem,
-    Bumper, IconButtonRow,
+    Button, Bumper, 
+    IconButtonRow,
     NavigateEvent,
     ButtonState,
-    InputState,
 };
 
 use std::sync::mpsc::{self, Receiver};
-use std::sync::{Arc, Mutex};
-use base64::{engine::general_purpose, Engine as _};
-use serde_json::{json, Value};
-
-use image::ImageFormat;
 
 #[derive(Debug, Component)]
 pub struct Account(Stack, Page, #[skip] Receiver<(Vec<u8>, ImageOrientation)>, #[skip] ButtonState);
 
 impl AppPage for Account {
     fn has_nav(&self) -> bool { true }
-    fn navigate(mut self: Box<Self>, ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
+    fn navigate(self: Box<Self>, _ctx: &mut Context, _index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
         Err(self)
     }
 }
@@ -53,7 +45,7 @@ impl Account {
         let name_input = TextInputProfiles::username(ctx, my_username);
         let bio_input = TextInputProfiles::biography(ctx, my_biography);
 
-        let address_item = DataItemProfiles::address_item(ctx, &String::new());
+        let address_item = DataItemProfiles::address_item(ctx, "");
         let orange_name_item = DataItemProfiles::orange_name_item(ctx, &orange_name);
         
         let (sender, receiver) = mpsc::channel();
@@ -73,7 +65,7 @@ impl Account {
 impl OnEvent for Account {
     fn on_event(&mut self, ctx: &mut Context, event: &mut dyn Event) -> bool {
         if let Some(TickEvent) = event.downcast_ref::<TickEvent>() {
-            let (orange_name, my_profile) = ProfileHelper::get_my_profile(ctx);
+            let my_profile = ProfileHelper::get_my_profile(ctx).1;
             let my_username = my_profile.get("username").unwrap();
             let my_biography = my_profile.get("biography").unwrap();
 
@@ -81,15 +73,15 @@ impl OnEvent for Account {
             AvatarProfiles::try_update(ctx, avatar, self.2.try_recv());
 
             let username_input = &mut self.1.content().find_at::<TextInput>(1).unwrap();
-            let name_changed = username_input.sync_input_value(&my_username);
+            let name_changed = username_input.sync_input_value(my_username);
 
             let biography_input = &mut self.1.content().find_at::<TextInput>(2).unwrap();
-            let bio_changed = biography_input.sync_input_value(&my_biography);
+            let bio_changed = biography_input.sync_input_value(my_biography);
 
             let button = self.1.bumper().as_mut().unwrap().find::<Button>().unwrap();
-            button.update_state(ctx, (!name_changed && !bio_changed), name_changed || bio_changed, &mut self.3);
+            button.update_state(ctx, !name_changed && !bio_changed, name_changed || bio_changed, &mut self.3);
         } else if let Some(UpdateProfileEvent) = event.downcast_ref::<UpdateProfileEvent>() {
-            let (orange_name, my_profile) = ProfileHelper::get_my_profile(ctx);
+            let my_profile = ProfileHelper::get_my_profile(ctx).1;
 
             let my_username = my_profile.get("username").unwrap();
             let my_biography = my_profile.get("biography").unwrap();
@@ -98,7 +90,7 @@ impl OnEvent for Account {
             let bio_value = self.1.content().find_at::<TextInput>(2).unwrap().value().to_string();
 
             if name_value != *my_username {ProfileHelper::update(ctx, "username".to_string(), name_value.clone());}
-            if name_value != *my_username {ProfileHelper::update(ctx, "biography".to_string(), bio_value.clone());}
+            if bio_value != *my_biography {ProfileHelper::update(ctx, "biography".to_string(), bio_value.clone());}
         }
 
         true
@@ -111,7 +103,7 @@ impl OnEvent for UserAccount {}
 
 impl AppPage for UserAccount {
     fn has_nav(&self) -> bool { false }
-    fn navigate(mut self: Box<Self>, ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
+    fn navigate(mut self: Box<Self>, _ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
         match index {
             0 => Ok(self.2.take().unwrap()),
             _ => Err(self)
@@ -141,7 +133,7 @@ impl UserAccount {
         let content = Content::new(Offset::Start, vec![Box::new(avatar), Box::new(buttons), Box::new(about_me), Box::new(orange_name_item), Box::new(address)]);
 
         let back = IconButton::navigation(ctx, "left", exit);
-        let header = Header::stack(ctx, Some(back), &user.get("username").unwrap(), None);
+        let header = Header::stack(ctx, Some(back), user.get("username").unwrap(), None);
         UserAccount(Stack::center(), Page::new(header, content, None), Some(on_exit))
     }
 }
@@ -192,7 +184,7 @@ impl OnEvent for UserBlocked {}
 
 impl AppPage for UserBlocked {
     fn has_nav(&self) -> bool { false }
-    fn navigate(mut self: Box<Self>, ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
+    fn navigate(mut self: Box<Self>, _ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
         match index {
             0 => Ok(self.2.take().unwrap()),
             _ => Err(self)
@@ -264,7 +256,7 @@ impl OnEvent for UserUnblocked {}
 
 impl AppPage for UserUnblocked {
     fn has_nav(&self) -> bool { false }
-    fn navigate(mut self: Box<Self>, ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
+    fn navigate(mut self: Box<Self>, _ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
         match index {
             0 => Ok(self.2.take().unwrap()),
             _ => Err(self)

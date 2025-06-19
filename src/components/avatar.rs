@@ -62,9 +62,9 @@ pub struct AvatarContentProfiles;
 impl AvatarContentProfiles {
     pub fn from_orange_name(ctx: &mut Context, orange_name: &OrangeName) -> AvatarContent {
         let profiles = ctx.state().get::<Profiles>();
-        let profile = profiles.0.get(&orange_name).unwrap();
+        let profile = profiles.0.get(orange_name).unwrap();
         match profile.get("avatar") {
-            None => AvatarContentProfiles::default(ctx),
+            None => AvatarContentProfiles::default(),
             Some(bytes) => {
                 let png_bytes = general_purpose::STANDARD.decode(bytes).unwrap();
                 let image = image::load_from_memory(&png_bytes).unwrap();
@@ -74,7 +74,8 @@ impl AvatarContentProfiles {
         }
     }
 
-    pub fn default(ctx: &mut Context) -> AvatarContent {
+    #[allow(clippy::should_implement_trait)]
+    pub fn default() -> AvatarContent {
         AvatarContent::Icon("profile", AvatarIconStyle::Secondary)
     }
 }

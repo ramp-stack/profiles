@@ -5,8 +5,6 @@ pub use crate::service::{Profile, Profiles, ProfileRequest, ProfileService, Name
 use serde_json::{Value, json};
 use std::hash::{DefaultHasher, Hasher, Hash};
 
-use std::fs;
-
 pub struct ProfilePlugin(runtime::Context);
 impl Plugin for ProfilePlugin {
     fn new(ctx: &mut Context) -> Self {ProfilePlugin(ctx.runtime.clone())}
@@ -22,10 +20,10 @@ pub struct ProfileHelper;
 impl ProfileHelper {
     pub fn has_blocked(ctx: &mut Context, user_a: &OrangeName, user_b: &OrangeName) -> bool {
         let profiles = ctx.state().get::<Profiles>();
-        let user = profiles.0.get(&user_a).unwrap();
+        let user = profiles.0.get(user_a).unwrap();
         user.get("blocked_orange_names")
             .and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
-            .map_or(false, |list| list.contains(&user_b.to_string()))
+            .is_some_and(|list| list.contains(&user_b.to_string()))
     }
 
     pub fn get_my_profile(ctx: &mut Context) -> (OrangeName, Profile) {
@@ -36,37 +34,35 @@ impl ProfileHelper {
     }
 
     pub fn block(ctx: &mut Context, orange_name: &OrangeName) {
-        Self::get_my_profile(ctx).1
+        if let Some(v) = Self::get_my_profile(ctx).1
             .get("blocked_orange_names")
             .and_then(|s| serde_json::from_str::<Value>(s).ok())
             .and_then(|val| val.as_array().cloned())
             .map(|mut list| {
                 list.push(json!(orange_name));
                 Value::Array(list)
-            }).or_else(|| Some(json!([orange_name])))
-            .map(|v| {
-                ctx.get::<ProfilePlugin>().request(ProfileRequest::InsertField("blocked_orange_names".into(), v.to_string()))
-            });
+            }).or_else(|| Some(json!([orange_name]))) { 
+                ctx.get::<ProfilePlugin>().request(ProfileRequest::InsertField("blocked_orange_names".into(), v.to_string())) 
+            }
     }
 
     pub fn unblock(ctx: &mut Context, orange_name: &OrangeName) {
-        Self::get_my_profile(ctx).1
+        if let Some(names) = Self::get_my_profile(ctx).1
             .get("blocked_orange_names")
-            .and_then(|s| serde_json::from_str::<Vec<Value>>(s).ok())
-            .map(|names| {
+            .and_then(|s| serde_json::from_str::<Vec<Value>>(s).ok()) { 
                 let filtered: Vec<_> = names.into_iter().filter(|v| *v != json!(orange_name)).collect();
                 ctx.get::<ProfilePlugin>().request(ProfileRequest::InsertField(
                     "blocked_orange_names".into(),
                     json!(filtered).to_string(),
                 ));
-            });
+            }
     }
 
 
     pub fn get_username(ctx: &mut Context) -> String {
         let (orange_name, my_profile) = Self::get_my_profile(ctx);
         my_profile.get("username").map(ToString::to_string).unwrap_or_else(|| {
-            let name = NameGenerator::new(&orange_name.to_string().as_str());
+            let name = NameGenerator::new(orange_name.to_string().as_str());
             ctx.get::<ProfilePlugin>().request(ProfileRequest::InsertField("username".into(), name.clone()));
             name
         })
@@ -88,6 +84,7 @@ impl ProfileHelper {
 pub struct NameGenerator;
 
 impl NameGenerator {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(input: &str) -> String {
         let (adjectives, nouns) = Self::load_words();
         let mut hasher = DefaultHasher::new();
