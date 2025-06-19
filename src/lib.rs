@@ -3,6 +3,7 @@ use serde::{Serialize, Deserialize};
 pub mod components;
 pub mod service;
 pub mod plugin;
+pub use plugin::Profile;
 pub mod events;
 pub mod pages;
 

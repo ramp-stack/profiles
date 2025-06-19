@@ -71,53 +71,54 @@ impl Service for ProfileService {
 
     async fn run(&mut self, ctx: &mut ThreadContext<Self::Send, Self::Receive>) -> Result<Option<Duration>, runtime::Error> {
         let mut mutated = false;
-        let name = ctx.hardware.cache.get::<Option<OrangeName>>("OrangeName").await.ok_or(MissingOrangeName)?;
-
-        if self.profile.is_none() {
-            let item = ctx.blocking_request::<AirService>(Request::ReadPublic(Filter::new(None, Some(name.clone()), Some(*PROFILE), None))).await?.read_public().pop();
-            let profile = item.as_ref().and_then(|i| serde_json::from_slice(&i.2.payload).ok());
-            mutated = profile.is_none();
-            self.profile = Some(profile.unwrap_or(BTreeMap::new()));
-            self.id = item.as_ref().map(|i| i.0);
-        }
-
-        while let Some((_, request)) = ctx.get_request() {
-            mutated = mutated || (matches!(request, ProfileRequest::InsertField(_,_)) || matches!(request, ProfileRequest::RemoveField(_)));
-            self.handle(request);
-        }
-
-        let profile = self.profile.as_ref().unwrap();
-
-        if mutated {
-            let item = PublicItem {
-                protocol: *PROFILE,
-                header: vec![],
-                payload: serde_json::to_vec(&profile).unwrap(),
-            };
-            match self.id {
-                Some(id) => {ctx.blocking_request::<AirService>(Request::UpdatePublic(id, item)).await?;},
-                None => {self.id = Some(ctx.blocking_request::<AirService>(Request::CreatePublic(item)).await?.create_public());}
+        println!("Errored");
+        if let Some(name) = ctx.hardware.cache.get::<Option<OrangeName>>("OrangeName").await {
+            if self.profile.is_none() {
+                let item = ctx.blocking_request::<AirService>(Request::ReadPublic(Filter::new(None, Some(name.clone()), Some(*PROFILE), None))).await?.read_public().pop();
+                let profile = item.as_ref().and_then(|i| serde_json::from_slice(&i.2.payload).ok());
+                mutated = profile.is_none();
+                self.profile = Some(profile.unwrap_or(BTreeMap::new()));
+                self.id = item.as_ref().map(|i| i.0);
             }
-        }
-        ctx.callback((name, profile.clone(), true));
 
-        let mut requests: Vec<_> = self.listening.iter().map(|name| ctx.request::<AirService>(Request::ReadPublic(Filter::new(None, Some(name.clone()), Some(*PROFILE), None)))).collect();
-        loop {
-            let mut error = None;
-            requests.retain(|request| {
-                match ctx.check_request(request) {
-                    Some(Ok(processed)) => {
-                        if let Some((name, profile)) = processed.read_public().pop().and_then(|i|
-                            Some((i.1, serde_json::from_slice::<Profile>(&i.2.payload).ok()?))
-                        ) { ctx.callback((name, profile, false)); }
-                        false
-                    },
-                    Some(Err(e)) => {error = Some(e); false},
-                    None => true
+            while let Some((_, request)) = ctx.get_request() {
+                mutated = mutated || (matches!(request, ProfileRequest::InsertField(_,_)) || matches!(request, ProfileRequest::RemoveField(_)));
+                self.handle(request);
+            }
+
+            let profile = self.profile.as_ref().unwrap();
+
+            if mutated {
+                let item = PublicItem {
+                    protocol: *PROFILE,
+                    header: vec![],
+                    payload: serde_json::to_vec(&profile).unwrap(),
+                };
+                match self.id {
+                    Some(id) => {ctx.blocking_request::<AirService>(Request::UpdatePublic(id, item)).await?;},
+                    None => {self.id = Some(ctx.blocking_request::<AirService>(Request::CreatePublic(item)).await?.create_public());}
                 }
-            });
-            if let Some(error) = error {return Err(error.into());}
-            if requests.is_empty() {break}
+            }
+            ctx.callback((name, profile.clone(), true));
+
+            let mut requests: Vec<_> = self.listening.iter().map(|name| ctx.request::<AirService>(Request::ReadPublic(Filter::new(None, Some(name.clone()), Some(*PROFILE), None)))).collect();
+            loop {
+                let mut error = None;
+                requests.retain(|request| {
+                    match ctx.check_request(request) {
+                        Some(Ok(processed)) => {
+                            if let Some((name, profile)) = processed.read_public().pop().and_then(|i|
+                                Some((i.1, serde_json::from_slice::<Profile>(&i.2.payload).ok()?))
+                            ) { ctx.callback((name, profile, false)); }
+                            false
+                        },
+                        Some(Err(e)) => {error = Some(e); false},
+                        None => true
+                    }
+                });
+                if let Some(error) = error {return Err(error.into());}
+                if requests.is_empty() {break}
+            }
         }
 
         Ok(Some(Duration::from_secs(5)))
