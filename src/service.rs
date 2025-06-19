@@ -47,12 +47,12 @@ impl ProfileService {
     }
 }
 
-#[derive(Debug)]
-struct MissingOrangeName;
-impl std::error::Error for MissingOrangeName {}
-impl std::fmt::Display for MissingOrangeName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {write!(f, "{:?}", self)}
-}
+// #[derive(Debug)]
+// struct MissingOrangeName;
+// impl std::error::Error for MissingOrangeName {}
+// impl std::fmt::Display for MissingOrangeName {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {write!(f, "{:?}", self)}
+// }
 
 impl Services for ProfileService {}
 

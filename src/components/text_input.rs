@@ -1,8 +1,9 @@
      
 use pelican_ui::Context;
 
-use pelican_ui_std::{ TextInput, InputState };
+use pelican_ui_std::TextInput;
 
+#[allow(clippy::type_complexity)]
 const NO_ICON: Option<(&str, fn(&mut Context, &mut String))> = None::<(&'static str, fn(&mut Context, &mut String))>;
 
 pub struct TextInputProfiles;
