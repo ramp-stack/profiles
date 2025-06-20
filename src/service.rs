@@ -47,13 +47,6 @@ impl ProfileService {
     }
 }
 
-// #[derive(Debug)]
-// struct MissingOrangeName;
-// impl std::error::Error for MissingOrangeName {}
-// impl std::fmt::Display for MissingOrangeName {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {write!(f, "{:?}", self)}
-// }
-
 impl Services for ProfileService {}
 
 #[async_trait]
@@ -98,26 +91,14 @@ impl Service for ProfileService {
                     None => {self.id = Some(ctx.blocking_request::<AirService>(Request::CreatePublic(item)).await?.create_public());}
                 }
             }
-            ctx.callback((name, profile.clone(), true));
+            ctx.callback((name.clone(), profile.clone(), true));
 
-            let mut requests: Vec<_> = self.listening.iter().map(|name| ctx.request::<AirService>(Request::ReadPublic(Filter::new(None, Some(name.clone()), Some(*PROFILE), None)))).collect();
-            loop {
-                let mut error = None;
-                requests.retain(|request| {
-                    match ctx.check_request(request) {
-                        Some(Ok(processed)) => {
-                            if let Some((name, profile)) = processed.read_public().pop().and_then(|i|
-                                Some((i.1, serde_json::from_slice::<Profile>(&i.2.payload).ok()?))
-                            ) { ctx.callback((name, profile, false)); }
-                            false
-                        },
-                        Some(Err(e)) => {error = Some(e); false},
-                        None => true
-                    }
-                });
-                if let Some(error) = error {return Err(error.into());}
-                if requests.is_empty() {break}
-            }
+            ctx.blocking_request::<AirService>(Request::ReadPublic(Filter::new(None, None, Some(*PROFILE), None))).await?.read_public().into_iter().for_each(|(_, n, item, _)| {
+                if let Some(profile) = serde_json::from_slice::<Profile>(&item.payload).ok() {
+                    let me = n == name;
+                    ctx.callback((n, profile, me));
+                }
+            });
         }
 
         Ok(Some(Duration::from_secs(5)))
