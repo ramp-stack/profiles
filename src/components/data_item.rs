@@ -14,8 +14,11 @@ impl DataItemProfiles {
     }
 
     pub fn biography_item(ctx: &mut Context, user: &Profile) -> DataItem {
-        let default_bio = "No bio yet.".to_string();
-        let bio = user.get("biography").unwrap_or(&default_bio);
+        let bio = match user.get("biography") {
+            Some(b) if b.is_empty() => "No bio yet.",
+            Some(b) => b,
+            None => "No bio yet.",
+        };
         DataItem::new(ctx, None, "About me", Some(bio), None, None, None)
     }
 

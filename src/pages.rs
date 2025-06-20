@@ -7,8 +7,8 @@ use pelican_ui::{Context, Component};
 use pelican_ui::hardware::ImageOrientation;
 use crate::events::UpdateProfileEvent;
 use crate::OrangeName;
-use crate::service::{Name, Profiles};
-use crate::plugin::ProfileHelper;
+use crate::service::Profiles;
+use crate::plugin::ProfilePlugin;
 use crate::components::{AvatarProfiles, AvatarContentProfiles, TextInputProfiles, DataItemProfiles, IconButtonProfiles};
 // use messages::{Rooms, Room};
 
@@ -38,9 +38,9 @@ impl AppPage for Account {
 
 impl Account {
     pub fn new(ctx: &mut Context) -> Self {
-        let orange_name = ctx.state().get::<Name>().0.unwrap();
-        let my_username = ProfileHelper::get_username(ctx);
-        let my_biography = ProfileHelper::get_biography(ctx);
+        let orange_name = ProfilePlugin::me(ctx).unwrap().0;
+        let my_username = ProfilePlugin::get_username(ctx);
+        let my_biography = ProfilePlugin::get_biography(ctx);
 
         let name_input = TextInputProfiles::username(ctx, my_username);
         let bio_input = TextInputProfiles::biography(ctx, my_biography);
@@ -65,9 +65,8 @@ impl Account {
 impl OnEvent for Account {
     fn on_event(&mut self, ctx: &mut Context, event: &mut dyn Event) -> bool {
         if let Some(TickEvent) = event.downcast_ref::<TickEvent>() {
-            let my_profile = ProfileHelper::get_my_profile(ctx).1;
-            let my_username = my_profile.get("username").unwrap();
-            let my_biography = my_profile.get("biography").unwrap();
+            let my_username = &ProfilePlugin::get_username(ctx);
+            let my_biography = &ProfilePlugin::get_biography(ctx);
 
             let avatar = self.1.content().find::<Avatar>().unwrap();
             AvatarProfiles::try_update(ctx, avatar, self.2.try_recv());
@@ -81,16 +80,14 @@ impl OnEvent for Account {
             let button = self.1.bumper().as_mut().unwrap().find::<Button>().unwrap();
             button.update_state(ctx, !name_changed && !bio_changed, name_changed || bio_changed, &mut self.3);
         } else if let Some(UpdateProfileEvent) = event.downcast_ref::<UpdateProfileEvent>() {
-            let my_profile = ProfileHelper::get_my_profile(ctx).1;
-
-            let my_username = my_profile.get("username").unwrap();
-            let my_biography = my_profile.get("biography").unwrap();
+            let my_username = &ProfilePlugin::get_username(ctx);
+            let my_biography = &ProfilePlugin::get_biography(ctx);
 
             let name_value = self.1.content().find_at::<TextInput>(1).unwrap().value().to_string();
             let bio_value = self.1.content().find_at::<TextInput>(2).unwrap().value().to_string();
 
-            if name_value != *my_username {ProfileHelper::update(ctx, "username".to_string(), name_value.clone());}
-            if bio_value != *my_biography {ProfileHelper::update(ctx, "biography".to_string(), bio_value.clone());}
+            if name_value != *my_username {ProfilePlugin::update(ctx, "username".to_string(), name_value.clone());}
+            if bio_value != *my_biography {ProfilePlugin::update(ctx, "biography".to_string(), bio_value.clone());}
         }
 
         true
@@ -115,9 +112,8 @@ impl UserAccount {
     pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
         let profiles = ctx.state().get::<Profiles>();
         let user = profiles.0.get(&orange_name).unwrap();
-
-        let my_orange_name = ProfileHelper::get_my_profile(ctx).0;
-        let is_blocked = ProfileHelper::has_blocked(ctx, &orange_name, &my_orange_name);
+        let my_orange_name = ProfilePlugin::me(ctx).unwrap().0;
+        let is_blocked = ProfilePlugin::has_blocked(ctx, &orange_name, &my_orange_name);
 
         let exit = move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0));
 
@@ -196,7 +192,7 @@ impl UserBlocked {
     pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
         let profiles = ctx.state().get::<Profiles>();
         let user = profiles.0.get(&orange_name).unwrap();
-        ProfileHelper::block(ctx, &orange_name);
+        ProfilePlugin::block(ctx, &orange_name);
 
         let text_size = ctx.theme.fonts.size.h4;
         let username = user.get("username").unwrap();
@@ -268,7 +264,7 @@ impl UserUnblocked {
     pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
         let profiles = ctx.state().get::<Profiles>();
         let user = profiles.0.get(&orange_name).unwrap();
-        ProfileHelper::unblock(ctx, &orange_name);
+        ProfilePlugin::unblock(ctx, &orange_name);
 
         let msg = format!("{} has been unblocked", user.get("username").unwrap());
         let text_size = ctx.theme.fonts.size.h4;

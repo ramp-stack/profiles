@@ -49,7 +49,9 @@ impl AvatarProfiles {
                 image.write_to(&mut std::io::Cursor::new(&mut png_bytes), image::ImageFormat::Png).unwrap();
                 let base64_png = general_purpose::STANDARD.encode(&png_bytes);
 
-                ctx.get::<ProfilePlugin>().request(ProfileRequest::InsertField("avatar".to_string(), base64_png));
+                let mut guard = ctx.get::<ProfilePlugin>();
+                let (plugin, ctx) = guard.get();
+                plugin.request(ProfileRequest::InsertField("avatar".to_string(), base64_png));
                 let asset_image = ctx.assets.add_image(image.into());
 
                 this.set_content(AvatarContent::Image(asset_image));
