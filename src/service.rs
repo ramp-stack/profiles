@@ -5,11 +5,8 @@ use std::time::Duration;
 use pelican_ui::runtime::{Services, Service, ThreadContext, async_trait, self};
 use pelican_ui::hardware;
 use pelican_ui::State;
-use pelican_ui::air::{Request, air, Service as AirService};
+use pelican_ui::air::{OrangeName, Id, PublicItem, Filter, Request, Service as AirService};
 
-use air::orange_name::OrangeName;
-use air::storage::{PublicItem, Filter};
-use air::Id;
 use serde::{Serialize, Deserialize};
 
 static PROFILE: LazyLock<Id> = LazyLock::new(|| Id::hash(&"ProfileV1".to_string()));
@@ -22,8 +19,6 @@ pub struct Name(pub Option<OrangeName>);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ProfileRequest {
-    Remove(OrangeName),
-    Add(OrangeName),
     InsertField(String, String),
     RemoveField(String),
 }
@@ -31,7 +26,6 @@ pub enum ProfileRequest {
 pub type Profile = BTreeMap<String, String>;
 
 pub struct ProfileService{
-    listening: BTreeSet<OrangeName>,
     profile: Option<Profile>,
     id: Option<Id>
 }
@@ -39,8 +33,6 @@ pub struct ProfileService{
 impl ProfileService {
     pub fn handle(&mut self, request: ProfileRequest) {
         match request {
-            ProfileRequest::Remove(name) => {self.listening.remove(&name);},
-            ProfileRequest::Add(name) => {self.listening.insert(name);},
             ProfileRequest::InsertField(key, value) => {self.profile.as_mut().map(|p| p.insert(key, value));},
             ProfileRequest::RemoveField(key) => {self.profile.as_mut().map(|p| p.remove(&key));},
         }
@@ -56,7 +48,6 @@ impl Service for ProfileService {
 
     async fn new(_hardware: &mut hardware::Context) -> Self {
         ProfileService{
-            listening: BTreeSet::new(),
             profile: None,
             id: None
         }
@@ -66,7 +57,7 @@ impl Service for ProfileService {
         let mut mutated = false;
         if let Some(name) = ctx.hardware.cache.get::<Option<OrangeName>>("OrangeName").await {
             if self.profile.is_none() {
-                let item = ctx.blocking_request::<AirService>(Request::ReadPublic(Filter::new(None, Some(name.clone()), Some(*PROFILE), None))).await?.read_public().pop();
+                let item = AirService::read_public(ctx, Filter::new(None, Some(name.clone()), Some(*PROFILE), None)).await?.pop();
                 let profile = item.as_ref().and_then(|i| serde_json::from_slice(&i.2.payload).ok());
                 mutated = profile.is_none();
                 self.profile = Some(profile.unwrap_or(BTreeMap::new()));
@@ -88,13 +79,13 @@ impl Service for ProfileService {
                 };
                 match self.id {
                     Some(id) => {ctx.blocking_request::<AirService>(Request::UpdatePublic(id, item)).await?;},
-                    None => {self.id = Some(ctx.blocking_request::<AirService>(Request::CreatePublic(item)).await?.create_public());}
+                    None => {self.id = Some(AirService::create_public(ctx, item).await?)}
                 }
             }
             ctx.callback((name.clone(), profile.clone(), true));
 
-            ctx.blocking_request::<AirService>(Request::ReadPublic(Filter::new(None, None, Some(*PROFILE), None))).await?.read_public().into_iter().for_each(|(_, n, item, _)| {
-                if let Some(profile) = serde_json::from_slice::<Profile>(&item.payload).ok() {
+            AirService::read_public(ctx, Filter::new(None, None, Some(*PROFILE), None)).await?.into_iter().for_each(|(_, n, item, _)| {
+                if let Ok(profile) = serde_json::from_slice::<Profile>(&item.payload) {
                     let me = n == name;
                     ctx.callback((n, profile, me));
                 }

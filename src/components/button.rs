@@ -1,6 +1,5 @@
 use pelican_ui::Context;
-
-use crate::OrangeName;
+use pelican_ui::air::OrangeName;
 // use crate::service::Profile;
 // use crate::pages::{BlockUser, UnblockUser};
 

@@ -1,6 +1,6 @@
 use pelican_ui::{Context, Plugin};
 use pelican_ui::runtime;
-use crate::OrangeName;
+use pelican_ui::air::OrangeName;
 pub use crate::service::{Profile, Profiles, ProfileRequest, ProfileService, Name};
 use serde_json::{Value, json};
 use std::hash::{DefaultHasher, Hasher, Hash};

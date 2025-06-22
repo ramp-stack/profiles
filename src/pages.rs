@@ -6,7 +6,7 @@ use pelican_ui::layout::{Area, SizeRequest, Layout};
 use pelican_ui::{Context, Component};
 use pelican_ui::hardware::ImageOrientation;
 use crate::events::UpdateProfileEvent;
-use crate::OrangeName;
+use pelican_ui::air::OrangeName;
 use crate::service::Profiles;
 use crate::plugin::ProfilePlugin;
 use crate::components::{AvatarProfiles, AvatarContentProfiles, TextInputProfiles, DataItemProfiles, IconButtonProfiles};

@@ -5,9 +5,8 @@ use base64::{engine::general_purpose, Engine};
 
 use crate::plugin::{ProfilePlugin, ProfileRequest};
 
+use pelican_ui::air::OrangeName;
 use crate::service::Profiles;
-use pelican_ui::air::air;
-use air::orange_name::OrangeName;
 
 use pelican_ui_std::{
     Avatar,
