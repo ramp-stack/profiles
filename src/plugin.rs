@@ -22,15 +22,14 @@ impl ProfilePlugin {
             .is_some_and(|list| list.contains(&user_b.to_string()))
     }
 
-    pub fn me(ctx: &mut Context) -> Option<(OrangeName, Profile)> {
-        let orange_name = ctx.state().get_or_default::<Name>().0.clone()?;
-        let profiles = ctx.state().get_or_default::<Profiles>();
-        let my_profile = profiles.0.get(&orange_name)?;
-        Some((orange_name, my_profile.clone()))
+    pub fn me(ctx: &mut Context) -> (OrangeName, Profile) {
+        let orange_name = ctx.state().get::<Name>().unwrap().0.clone();
+        let my_profile = ctx.state().get_or_default::<Profiles>().0.get(&orange_name).unwrap();
+        (orange_name.clone(), my_profile.clone())
     }
 
     pub fn block(ctx: &mut Context, orange_name: &OrangeName) {
-        if let Some(v) = Self::me(ctx).unwrap().1
+        if let Some(v) = Self::me(ctx).1
             .get("blocked_orange_names")
             .and_then(|s| serde_json::from_str::<Value>(s).ok())
             .and_then(|val| val.as_array().cloned())
@@ -45,7 +44,7 @@ impl ProfilePlugin {
     }
 
     pub fn unblock(ctx: &mut Context, orange_name: &OrangeName) {
-        if let Some(names) = Self::me(ctx).unwrap().1
+        if let Some(names) = Self::me(ctx).1
             .get("blocked_orange_names")
             .and_then(|s| serde_json::from_str::<Vec<Value>>(s).ok()) { 
                 let filtered: Vec<_> = names.into_iter().filter(|v| *v != json!(orange_name)).collect();
@@ -59,7 +58,7 @@ impl ProfilePlugin {
     }
 
     pub fn get_username(ctx: &mut Context) -> String {
-        let (orange_name, my_profile) = Self::me(ctx).unwrap();
+        let (orange_name, my_profile) = Self::me(ctx);
         my_profile.get("username").map(ToString::to_string).unwrap_or_else(|| {
             let name = NameGenerator::new(orange_name.to_string().as_str());
             let mut guard = ctx.get::<ProfilePlugin>();
@@ -70,8 +69,7 @@ impl ProfilePlugin {
     }
 
     pub fn get_biography(ctx: &mut Context) -> String {
-        let (_, my_profile) = Self::me(ctx).unwrap();
-        my_profile.get("biography").map(ToString::to_string).unwrap_or_else(|| {
+        Self::me(ctx).1.get("biography").map(ToString::to_string).unwrap_or_else(|| {
             let mut guard = ctx.get::<ProfilePlugin>();
             let plugin = guard.get().0;
             plugin.request(ProfileRequest::InsertField("biography".into(), String::new()));

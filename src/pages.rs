@@ -42,7 +42,7 @@ struct TempAccountValues(String, String);
 
 impl Account {
     pub fn new(ctx: &mut Context) -> Self {
-        let orange_name = ProfilePlugin::me(ctx).unwrap().0;
+        let orange_name = ProfilePlugin::me(ctx).0;
         let my_username = ProfilePlugin::get_username(ctx);
         let my_biography = ProfilePlugin::get_biography(ctx);
 
@@ -64,7 +64,7 @@ impl Account {
         let content = Content::new(Offset::Start, vec![Box::new(avatar), Box::new(name_input), Box::new(bio_input), Box::new(orange_name_item), Box::new(address_item)]);
         let header = Header::home(ctx, "Account");
 
-        Account(Stack::center(), Page::new(header, content, Some(bumper)), receiver, ButtonState::Default)
+        Account(Stack::center(), Page::new(Some(header), content, Some(bumper)), receiver, ButtonState::Default)
     }
 }
 
@@ -124,7 +124,7 @@ impl UserAccount {
     pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
         let profiles = ctx.state().get_or_default::<Profiles>().clone();
         let user = profiles.0.get(&orange_name).unwrap();
-        let my_orange_name = ProfilePlugin::me(ctx).unwrap().0;
+        let my_orange_name = ProfilePlugin::me(ctx).0;
         let is_blocked = ProfilePlugin::has_blocked(ctx, &orange_name, &my_orange_name);
 
         let exit = move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0));
@@ -142,7 +142,7 @@ impl UserAccount {
 
         let back = IconButton::navigation(ctx, "left", exit);
         let header = Header::stack(ctx, Some(back), user.get("username").unwrap(), None);
-        UserAccount(Stack::center(), Page::new(header, content, None), Some(on_exit))
+        UserAccount(Stack::center(), Page::new(Some(header), content, None), Some(on_exit))
     }
 }
 
@@ -182,7 +182,7 @@ impl BlockUser {
         let content = Content::new(Offset::Center, vec![Box::new(avatar), Box::new(text)]);
         let header = Header::stack(ctx, Some(back), "Block user", None);
 
-        BlockUser(Stack::default(), Page::new(header, content, Some(bumper)), Some(on_exit), orange_name)
+        BlockUser(Stack::default(), Page::new(Some(header), content, Some(bumper)), Some(on_exit), orange_name)
     }
 }
 
@@ -218,7 +218,7 @@ impl UserBlocked {
 
         let bumper = Bumper::single_button(ctx, button);
         let header = Header::stack(ctx, Some(close), "User blocked", None);
-        UserBlocked(Stack::default(), Page::new(header, content, Some(bumper)), Some(on_exit))
+        UserBlocked(Stack::default(), Page::new(Some(header), content, Some(bumper)), Some(on_exit))
     }
 }
 
@@ -254,7 +254,7 @@ impl UnblockUser {
 
         let bumper = Bumper::double_button(ctx, cancel, confirm);
         let header = Header::stack(ctx, Some(back), "Unblock user", None);
-        UnblockUser(Stack::default(), Page::new(header, content, Some(bumper)), Some(on_exit), orange_name)
+        UnblockUser(Stack::default(), Page::new(Some(header), content, Some(bumper)), Some(on_exit), orange_name)
     }
 }
 
@@ -289,6 +289,6 @@ impl UserUnblocked {
 
         let bumper = Bumper::single_button(ctx, button);
         let header = Header::stack(ctx, Some(close), "User unblocked", None);
-        UserUnblocked(Stack::default(), Page::new(header, content, Some(bumper)), Some(on_exit))
+        UserUnblocked(Stack::default(), Page::new(Some(header), content, Some(bumper)), Some(on_exit))
     }
 }
