@@ -55,30 +55,21 @@ impl Service for ProfileService {
 
     async fn run(&mut self, ctx: &mut ThreadContext<Self::Send, Self::Receive>) -> Result<Option<Duration>, runtime::Error> {
         let mut mutated = false;
-        println!("RUNNING");
         if let Some(name) = ctx.hardware.cache.get::<Option<OrangeName>>("OrangeName").await {
-            println!("NAME WAS FOUND {:?}", name);
             if self.profile.is_none() {
-                println!("profile was none");
                 let item = AirService::read_public(ctx, Filter::new(None, Some(name.clone()), Some(*PROFILE), None)).await?.pop();
-                panic!("Read public");
                 let profile = item.as_ref().and_then(|i| serde_json::from_slice(&i.2.payload).ok());
                 mutated = profile.is_none();
-                println!("Adjusted");
                 self.profile = Some(profile.unwrap_or(BTreeMap::new()));
                 self.id = item.as_ref().map(|i| i.0);
             }
-            println!("test 123");
 
             while let Some((_, request)) = ctx.get_request() {
-                println!("Request");
                 mutated = mutated || (matches!(request, ProfileRequest::InsertField(_,_)) || matches!(request, ProfileRequest::RemoveField(_)));
                 self.handle(request);
             }
 
-            println!("Get Profile");
             let profile = self.profile.as_ref().unwrap();
-            println!("Got Profile");
 
             if mutated {
                 let item = PublicItem {
@@ -91,7 +82,7 @@ impl Service for ProfileService {
                     None => {self.id = Some(AirService::create_public(ctx, item).await?)}
                 }
             }
-            println!("Sending callback {:?}", name);
+
             ctx.callback((name.clone(), profile.clone(), true));
 
             AirService::read_public(ctx, Filter::new(None, None, Some(*PROFILE), None)).await?.into_iter().for_each(|(_, n, item, _)| {
@@ -106,7 +97,6 @@ impl Service for ProfileService {
     }
 
     fn callback(state: &mut State, response: Self::Send) {
-        println!("Callback {:?}", response);
         let mut profiles = state.get_or_default::<Profiles>().0.clone();
         if response.2 {state.set(Name(response.0.clone()));}
         profiles.insert(response.0, response.1);

@@ -122,4 +122,32 @@ impl NameGenerator {
         (adjectives, nouns)
     }
 
+    pub fn display_name(name: String) -> String {
+        if name.len() <= 10 {
+            if name.len() < 5 { return "My Profile".to_string();}
+            return name.to_string();
+        }
+        let first = name.split_whitespace().next().unwrap_or("");
+        let mut last = 0;
+        let mut chunks = vec![];
+        for (i, c) in first.char_indices().skip(1) {
+            if c.is_uppercase() {
+                chunks.push(&first[last..i]);
+                last = i;
+            }
+        }
+        chunks.push(&first[last..]);
+        let mut combined = String::new();
+        for c in chunks {
+            match combined.len() + c.len() <= 10 {
+                true => combined.push_str(c),
+                false => break,
+            }
+        }
+        match !combined.is_empty() {
+            true => combined,
+            false if first.len() <= 10 => first.to_string(),
+            false => first.chars().take(7).collect::<String>() + "..."
+        }
+    }
 }
