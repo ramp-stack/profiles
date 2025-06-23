@@ -62,7 +62,7 @@ impl AvatarProfiles {
 pub struct AvatarContentProfiles;
 impl AvatarContentProfiles {
     pub fn from_orange_name(ctx: &mut Context, orange_name: &OrangeName) -> AvatarContent {
-        let profiles = ctx.state().get::<Profiles>();
+        let profiles = ctx.state().get_or_default::<Profiles>();
         let profile = profiles.0.get(orange_name).unwrap();
         match profile.get("avatar") {
             None => AvatarContentProfiles::default(),

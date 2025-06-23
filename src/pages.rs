@@ -110,7 +110,7 @@ impl AppPage for UserAccount {
 
 impl UserAccount {
     pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
-        let profiles = ctx.state().get::<Profiles>();
+        let profiles = ctx.state().get_or_default::<Profiles>().clone();
         let user = profiles.0.get(&orange_name).unwrap();
         let my_orange_name = ProfilePlugin::me(ctx).unwrap().0;
         let is_blocked = ProfilePlugin::has_blocked(ctx, &orange_name, &my_orange_name);
@@ -151,7 +151,7 @@ impl AppPage for BlockUser {
 
 impl BlockUser {
     pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
-        let profiles = ctx.state().get::<Profiles>();
+        let profiles = ctx.state().get_or_default::<Profiles>().clone();
         let user = profiles.0.get(&orange_name).unwrap();
 
         let theme = &ctx.theme;
@@ -190,7 +190,7 @@ impl AppPage for UserBlocked {
 
 impl UserBlocked {
     pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
-        let profiles = ctx.state().get::<Profiles>();
+        let profiles = ctx.state().get_or_default::<Profiles>().clone();
         let user = profiles.0.get(&orange_name).unwrap();
         ProfilePlugin::block(ctx, &orange_name);
 
@@ -227,7 +227,7 @@ impl AppPage for UnblockUser {
 
 impl UnblockUser {
     pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
-        let profiles = ctx.state().get::<Profiles>();
+        let profiles = ctx.state().get_or_default::<Profiles>().clone();
         let user = profiles.0.get(&orange_name).unwrap();
 
         let msg = format!("Are you sure you want to unblock {}?", user.get("username").unwrap());
@@ -262,7 +262,7 @@ impl AppPage for UserUnblocked {
 
 impl UserUnblocked {
     pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
-        let profiles = ctx.state().get::<Profiles>();
+        let profiles = ctx.state().get_or_default::<Profiles>().clone();
         let user = profiles.0.get(&orange_name).unwrap();
         ProfilePlugin::unblock(ctx, &orange_name);
 

@@ -15,7 +15,7 @@ impl ProfilePlugin {
     }
 
     pub fn has_blocked(ctx: &mut Context, user_a: &OrangeName, user_b: &OrangeName) -> bool {
-        let profiles = ctx.state().get::<Profiles>();
+        let profiles = ctx.state().get_or_default::<Profiles>().clone();
         let user = profiles.0.get(user_a).unwrap();
         user.get("blocked_orange_names")
             .and_then(|s| serde_json::from_str::<Vec<String>>(s).ok())
@@ -23,8 +23,8 @@ impl ProfilePlugin {
     }
 
     pub fn me(ctx: &mut Context) -> Option<(OrangeName, Profile)> {
-        let orange_name = ctx.state().get::<Name>().0?;
-        let profiles = ctx.state().get::<Profiles>();
+        let orange_name = ctx.state().get_or_default::<Name>().0.clone()?;
+        let profiles = ctx.state().get_or_default::<Profiles>();
         let my_profile = profiles.0.get(&orange_name)?;
         Some((orange_name, my_profile.clone()))
     }

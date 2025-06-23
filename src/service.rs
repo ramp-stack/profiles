@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, BTreeMap};
+use std::collections::BTreeMap;
 use std::sync::LazyLock;
 use std::time::Duration;
 
@@ -96,9 +96,9 @@ impl Service for ProfileService {
     }
 
     fn callback(state: &mut State, response: Self::Send) {
-        let mut profiles = state.get::<Profiles>().0;
-        if response.2 {state.set(&Name(Some(response.0.clone())));}
+        let mut profiles = state.get_or_default::<Profiles>().0.clone();
+        if response.2 {state.set(Name(Some(response.0.clone())));}
         profiles.insert(response.0, response.1);
-        state.set(&Profiles(profiles));
+        state.set(Profiles(profiles));
     }
 }
