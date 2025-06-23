@@ -25,6 +25,7 @@ use pelican_ui_std::{
 };
 
 use std::sync::mpsc::{self, Receiver};
+use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Component)]
 pub struct Account(Stack, Page, #[skip] Receiver<(Vec<u8>, ImageOrientation)>, #[skip] ButtonState);
@@ -36,11 +37,16 @@ impl AppPage for Account {
     }
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+struct TempAccountValues(String, String);
+
 impl Account {
     pub fn new(ctx: &mut Context) -> Self {
         let orange_name = ProfilePlugin::me(ctx).unwrap().0;
         let my_username = ProfilePlugin::get_username(ctx);
         let my_biography = ProfilePlugin::get_biography(ctx);
+
+        ctx.state().set(TempAccountValues(my_username.clone(), my_biography.clone()));
 
         let name_input = TextInputProfiles::username(ctx, my_username);
         let bio_input = TextInputProfiles::biography(ctx, my_biography);
@@ -65,29 +71,35 @@ impl Account {
 impl OnEvent for Account {
     fn on_event(&mut self, ctx: &mut Context, event: &mut dyn Event) -> bool {
         if let Some(TickEvent) = event.downcast_ref::<TickEvent>() {
-            let my_username = &ProfilePlugin::get_username(ctx);
-            let my_biography = &ProfilePlugin::get_biography(ctx);
+            let data = ctx.state().get_or_default::<TempAccountValues>().clone();
+            let (my_username, my_biography) = (data.0.clone(), data.1.clone());
+            // let my_username = &ProfilePlugin::get_username(ctx);
+            // let my_biography = &ProfilePlugin::get_biography(ctx);
 
             let avatar = self.1.content().find::<Avatar>().unwrap();
             AvatarProfiles::try_update(ctx, avatar, self.2.try_recv());
 
             let username_input = &mut self.1.content().find_at::<TextInput>(1).unwrap();
-            let name_changed = username_input.sync_input_value(my_username);
+            let name_changed = username_input.sync_input_value(&my_username);
 
             let biography_input = &mut self.1.content().find_at::<TextInput>(2).unwrap();
-            let bio_changed = biography_input.sync_input_value(my_biography);
+            let bio_changed = biography_input.sync_input_value(&my_biography);
 
             let button = self.1.bumper().as_mut().unwrap().find::<Button>().unwrap();
             button.update_state(ctx, !name_changed && !bio_changed, name_changed || bio_changed, &mut self.3);
         } else if let Some(UpdateProfileEvent) = event.downcast_ref::<UpdateProfileEvent>() {
-            let my_username = &ProfilePlugin::get_username(ctx);
-            let my_biography = &ProfilePlugin::get_biography(ctx);
+            // let my_username = &ProfilePlugin::get_username(ctx);
+            // let my_biography = &ProfilePlugin::get_biography(ctx);
+            let data = ctx.state().get_or_default::<TempAccountValues>();
+            let (my_username, my_biography) = (data.0.clone(), data.1.clone());
 
             let name_value = self.1.content().find_at::<TextInput>(1).unwrap().value().to_string();
             let bio_value = self.1.content().find_at::<TextInput>(2).unwrap().value().to_string();
 
             if name_value != *my_username {ProfilePlugin::update(ctx, "username".to_string(), name_value.clone());}
             if bio_value != *my_biography {ProfilePlugin::update(ctx, "biography".to_string(), bio_value.clone());}
+
+            ctx.state().set(TempAccountValues(name_value.clone(), bio_value.clone()));
         }
 
         true
