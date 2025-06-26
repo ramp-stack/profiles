@@ -10,7 +10,6 @@ use pelican_ui::air::OrangeName;
 use crate::service::Profiles;
 use crate::plugin::ProfilePlugin;
 use crate::components::{AvatarProfiles, AvatarContentProfiles, TextInputProfiles, DataItemProfiles, IconButtonProfiles};
-// use messages::{Rooms, Room};
 
 use pelican_ui_std::{
     AppPage, Stack, Page,
@@ -24,6 +23,7 @@ use pelican_ui_std::{
     ButtonState,
 };
 
+use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{self, Receiver};
 use serde::{Serialize, Deserialize};
 
@@ -106,43 +106,50 @@ impl OnEvent for Account {
     }
 }
 
-#[derive(Debug, Component)]
-pub struct UserAccount(Stack, Page, #[skip] Option<Box<dyn AppPage>>);
+#[derive(Component)]
+pub struct UserAccount(Stack, Page, #[skip] Option<Box<dyn AppPage>>, #[skip] Arc<Mutex<Vec<(&'static str, Box<dyn FnMut(&mut Context) -> Box<dyn AppPage>>)>>>);
 impl OnEvent for UserAccount {}
 
 impl AppPage for UserAccount {
     fn has_nav(&self) -> bool { false }
-    fn navigate(mut self: Box<Self>, _ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
+    fn navigate(mut self: Box<Self>, ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
         match index {
             0 => Ok(self.2.take().unwrap()),
-            _ => Err(self)
+            _ => match index > 0 && index - 1 < self.3.lock().unwrap().len() {
+                true => Ok((self.3.lock().unwrap().get_mut(index - 1).unwrap().1)(ctx)),
+                false => Err(self),
+            }
         }
     }
 }
 
+impl std::fmt::Debug for UserAccount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "UserAccount")
+    }
+}
+
 impl UserAccount {
-    pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
+    pub fn new(ctx: &mut Context, orange_name: OrangeName, actions: Arc<Mutex<Vec<(&'static str, Box<dyn FnMut(&mut Context) -> Box<dyn AppPage>>)>>>, on_exit: Box<dyn AppPage>) -> Self {
         let profiles = ctx.state().get_or_default::<Profiles>().clone();
         let user = profiles.0.get(&orange_name).unwrap();
         let my_orange_name = ProfilePlugin::me(ctx).0;
         let is_blocked = ProfilePlugin::has_blocked(ctx, &orange_name, &my_orange_name);
 
-        let exit = move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0));
+        let icon_actions = actions.lock().unwrap().iter().enumerate().map(|(i, (icon, _))| {
+            (icon.clone(), Box::new(move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(i))) as Box<dyn FnMut(&mut Context)>)
+        }).collect::<Vec<_>>();
 
-        let bitcoin = IconButtonProfiles::bitcoin(ctx, exit);
-        let messages = IconButtonProfiles::messages(ctx, orange_name.clone(), exit);
-        let block = IconButtonProfiles::block(ctx, orange_name.clone(), is_blocked, exit);
-        let buttons = IconButtonRow::new(ctx, vec![messages, bitcoin, block]);
-
+        let buttons = IconButtonRow::new(ctx, icon_actions);
         let address = DataItemProfiles::address_item(ctx, "");
         let orange_name_item = DataItemProfiles::orange_name_item(ctx, &orange_name);
         let about_me = DataItemProfiles::biography_item(ctx, user);
         let avatar = AvatarProfiles::user(ctx, &orange_name);
         let content = Content::new(Offset::Start, vec![Box::new(avatar), Box::new(buttons), Box::new(about_me), Box::new(orange_name_item), Box::new(address)]);
 
-        let back = IconButton::navigation(ctx, "left", exit);
+        let back = IconButton::navigation(ctx, "left", move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0)));
         let header = Header::stack(ctx, Some(back), user.get("username").unwrap(), None);
-        UserAccount(Stack::center(), Page::new(Some(header), content, None), Some(on_exit))
+        UserAccount(Stack::center(), Page::new(Some(header), content, None), Some(on_exit), actions)
     }
 }
 
