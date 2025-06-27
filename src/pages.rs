@@ -7,9 +7,8 @@ use pelican_ui::{Context, Component};
 use pelican_ui::hardware::ImageOrientation;
 use crate::events::UpdateProfileEvent;
 use pelican_ui::air::OrangeName;
-use crate::service::Profiles;
 use crate::plugin::ProfilePlugin;
-use crate::components::{AvatarProfiles, AvatarContentProfiles, TextInputProfiles, DataItemProfiles, IconButtonProfiles};
+use crate::components::{AvatarProfiles, AvatarContentProfiles, TextInputProfiles, DataItemProfiles};
 
 use pelican_ui_std::{
     AppPage, Stack, Page,
@@ -27,6 +26,8 @@ use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{self, Receiver};
 use serde::{Serialize, Deserialize};
 
+pub type AccountActions = Arc<Mutex<Vec<(&'static str, Box<dyn FnMut(&mut Context) -> Box<dyn AppPage>>)>>>;
+
 #[derive(Debug, Component)]
 pub struct Account(Stack, Page, #[skip] Receiver<(Vec<u8>, ImageOrientation)>, #[skip] ButtonState);
 
@@ -43,8 +44,8 @@ struct TempAccountValues(String, String);
 impl Account {
     pub fn new(ctx: &mut Context) -> Self {
         let orange_name = ProfilePlugin::me(ctx).0;
-        let my_username = ProfilePlugin::get_username(ctx);
-        let my_biography = ProfilePlugin::get_biography(ctx);
+        let my_username = ProfilePlugin::username(ctx, &orange_name);
+        let my_biography = ProfilePlugin::biography(ctx, &orange_name);
 
         ctx.state().set(TempAccountValues(my_username.clone(), my_biography.clone()));
 
@@ -73,8 +74,6 @@ impl OnEvent for Account {
         if let Some(TickEvent) = event.downcast_ref::<TickEvent>() {
             let data = ctx.state().get_or_default::<TempAccountValues>().clone();
             let (my_username, my_biography) = (data.0.clone(), data.1.clone());
-            // let my_username = &ProfilePlugin::get_username(ctx);
-            // let my_biography = &ProfilePlugin::get_biography(ctx);
 
             let avatar = self.1.content().find::<Avatar>().unwrap();
             AvatarProfiles::try_update(ctx, avatar, self.2.try_recv());
@@ -88,8 +87,6 @@ impl OnEvent for Account {
             let button = self.1.bumper().as_mut().unwrap().find::<Button>().unwrap();
             button.update_state(ctx, !name_changed && !bio_changed, name_changed || bio_changed, &mut self.3);
         } else if let Some(UpdateProfileEvent) = event.downcast_ref::<UpdateProfileEvent>() {
-            // let my_username = &ProfilePlugin::get_username(ctx);
-            // let my_biography = &ProfilePlugin::get_biography(ctx);
             let data = ctx.state().get_or_default::<TempAccountValues>();
             let (my_username, my_biography) = (data.0.clone(), data.1.clone());
 
@@ -107,7 +104,7 @@ impl OnEvent for Account {
 }
 
 #[derive(Component)]
-pub struct UserAccount(Stack, Page, #[skip] Option<Box<dyn AppPage>>, #[skip] Arc<Mutex<Vec<(&'static str, Box<dyn FnMut(&mut Context) -> Box<dyn AppPage>>)>>>);
+pub struct UserAccount(Stack, Page, #[skip] Option<Box<dyn AppPage>>, #[skip] AccountActions);
 impl OnEvent for UserAccount {}
 
 impl AppPage for UserAccount {
@@ -130,25 +127,24 @@ impl std::fmt::Debug for UserAccount {
 }
 
 impl UserAccount {
-    pub fn new(ctx: &mut Context, orange_name: OrangeName, actions: Arc<Mutex<Vec<(&'static str, Box<dyn FnMut(&mut Context) -> Box<dyn AppPage>>)>>>, on_exit: Box<dyn AppPage>) -> Self {
-        let profiles = ctx.state().get_or_default::<Profiles>().clone();
-        let user = profiles.0.get(&orange_name).unwrap();
-        let my_orange_name = ProfilePlugin::me(ctx).0;
-        let is_blocked = ProfilePlugin::has_blocked(ctx, &orange_name, &my_orange_name);
+    pub fn new(ctx: &mut Context, orange_name: OrangeName, actions: AccountActions, on_exit: Box<dyn AppPage>) -> Self {
+        // let my_orange_name = ProfilePlugin::me(ctx).0;
+        let username = ProfilePlugin::username(ctx, &orange_name);
+        // let is_blocked = ProfilePlugin::has_blocked(ctx, &orange_name, &my_orange_name);
 
         let icon_actions = actions.lock().unwrap().iter().enumerate().map(|(i, (icon, _))| {
-            (icon.clone(), Box::new(move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(i))) as Box<dyn FnMut(&mut Context)>)
+            (*icon, Box::new(move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(i))) as Box<dyn FnMut(&mut Context)>)
         }).collect::<Vec<_>>();
 
         let buttons = IconButtonRow::new(ctx, icon_actions);
         let address = DataItemProfiles::address_item(ctx, "");
         let orange_name_item = DataItemProfiles::orange_name_item(ctx, &orange_name);
-        let about_me = DataItemProfiles::biography_item(ctx, user);
+        let about_me = DataItemProfiles::biography_item(ctx, &orange_name);
         let avatar = AvatarProfiles::user(ctx, &orange_name);
         let content = Content::new(Offset::Start, vec![Box::new(avatar), Box::new(buttons), Box::new(about_me), Box::new(orange_name_item), Box::new(address)]);
 
         let back = IconButton::navigation(ctx, "left", move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0)));
-        let header = Header::stack(ctx, Some(back), user.get("username").unwrap(), None);
+        let header = Header::stack(ctx, Some(back), &username, None);
         UserAccount(Stack::center(), Page::new(Some(header), content, None), Some(on_exit), actions)
     }
 }
@@ -170,8 +166,7 @@ impl AppPage for BlockUser {
 
 impl BlockUser {
     pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
-        let profiles = ctx.state().get_or_default::<Profiles>().clone();
-        let user = profiles.0.get(&orange_name).unwrap();
+        let username = ProfilePlugin::username(ctx, &orange_name);
 
         let theme = &ctx.theme;
         let text_size = theme.fonts.size.h4;
@@ -183,7 +178,6 @@ impl BlockUser {
         let bumper = Bumper::double_button(ctx, cancel, confirm);
         let avatar = AvatarProfiles::new_with_block(ctx, &orange_name);
 
-        let username = user.get("username").unwrap();
         let msg = format!("Are you sure you want to block {}?", username);
         let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center);
         let content = Content::new(Offset::Center, vec![Box::new(avatar), Box::new(text)]);
@@ -209,13 +203,9 @@ impl AppPage for UserBlocked {
 
 impl UserBlocked {
     pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
-        let profiles = ctx.state().get_or_default::<Profiles>().clone();
-        let user = profiles.0.get(&orange_name).unwrap();
         ProfilePlugin::block(ctx, &orange_name);
-
         let text_size = ctx.theme.fonts.size.h4;
-        let username = user.get("username").unwrap();
-        let msg = format!("{} has been blocked", username);
+        let msg = format!("{} has been blocked", ProfilePlugin::username(ctx, &orange_name));
         let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center);
         let avatar = AvatarProfiles::new_with_block(ctx, &orange_name);
         let content = Content::new(Offset::Center, vec![Box::new(avatar), Box::new(text)]);
@@ -246,10 +236,7 @@ impl AppPage for UnblockUser {
 
 impl UnblockUser {
     pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
-        let profiles = ctx.state().get_or_default::<Profiles>().clone();
-        let user = profiles.0.get(&orange_name).unwrap();
-
-        let msg = format!("Are you sure you want to unblock {}?", user.get("username").unwrap());
+        let msg = format!("Are you sure you want to unblock {}?", ProfilePlugin::username(ctx, &orange_name));
         let text_size = ctx.theme.fonts.size.h4;
         let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center);
         let avatar = AvatarProfiles::new_with_unblock(ctx, &orange_name); 
@@ -281,11 +268,9 @@ impl AppPage for UserUnblocked {
 
 impl UserUnblocked {
     pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
-        let profiles = ctx.state().get_or_default::<Profiles>().clone();
-        let user = profiles.0.get(&orange_name).unwrap();
         ProfilePlugin::unblock(ctx, &orange_name);
 
-        let msg = format!("{} has been unblocked", user.get("username").unwrap());
+        let msg = format!("{} has been unblocked", ProfilePlugin::username(ctx, &orange_name));
         let text_size = ctx.theme.fonts.size.h4;
         let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center);
         let avatar = AvatarProfiles::new_with_unblock(ctx, &orange_name);

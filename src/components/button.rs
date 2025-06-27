@@ -1,12 +1,13 @@
 use pelican_ui::Context;
-use pelican_ui::air::OrangeName;
 use pelican_ui_std::AppPage;
 
 use crate::pages::Account;
 
+type ProfileButton = (&'static str, Box<dyn FnMut(&mut Context) -> Box<dyn AppPage>>);
+
 pub struct IconButtonProfiles;
 impl IconButtonProfiles {
-    pub fn block(ctx: &mut Context) -> (&'static str, Box<dyn FnMut(&mut Context) -> Box<dyn AppPage>>) {
+    pub fn block(_ctx: &mut Context) -> ProfileButton {
         let closure = Box::new(move |ctx: &mut Context| {
             // let application_page = match is_blocked { 
             //     true => UnblockUser::new(ctx, &orange_name, account_return.lock().unwrap().take().unwrap()),

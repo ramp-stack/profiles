@@ -57,22 +57,32 @@ impl ProfilePlugin {
             }
     }
 
-    pub fn get_username(ctx: &mut Context) -> String {
-        let (orange_name, my_profile) = Self::me(ctx);
-        my_profile.get("username").map(ToString::to_string).unwrap_or_else(|| {
-            let name = NameGenerator::new(orange_name.to_string().as_str());
-            let mut guard = ctx.get::<ProfilePlugin>();
-            let plugin = guard.get().0;
-            plugin.request(ProfileRequest::InsertField("username".into(), name.clone()));
-            name
+    pub fn username(ctx: &mut Context, orange_name: &OrangeName) -> String {
+        let profiles = ctx.state().get_or_default::<Profiles>().clone();
+        let profile = profiles.0.get(orange_name).unwrap();
+        profile.get("username").map(ToString::to_string).unwrap_or_else(|| {
+            if *orange_name == Self::me(ctx).0 {
+                let name = NameGenerator::new(orange_name.to_string().as_str());
+                let mut guard = ctx.get::<ProfilePlugin>();
+                let plugin = guard.get().0;
+                plugin.request(ProfileRequest::InsertField("username".into(), name.clone()));
+                name
+            } else {
+                println!("!--- USER DID NOT CONTAIN A USERNAME ---!");
+                "Orange User".to_string()
+            }
         })
     }
 
-    pub fn get_biography(ctx: &mut Context) -> String {
-        Self::me(ctx).1.get("biography").map(ToString::to_string).unwrap_or_else(|| {
-            let mut guard = ctx.get::<ProfilePlugin>();
-            let plugin = guard.get().0;
-            plugin.request(ProfileRequest::InsertField("biography".into(), String::new()));
+    pub fn biography(ctx: &mut Context, orange_name: &OrangeName) -> String {
+        let profiles = ctx.state().get_or_default::<Profiles>().clone();
+        let profile = profiles.0.get(orange_name).unwrap();
+        profile.get("biography").map(ToString::to_string).unwrap_or_else(|| {
+            if *orange_name == Self::me(ctx).0 {
+                let mut guard = ctx.get::<ProfilePlugin>();
+                let plugin = guard.get().0;
+                plugin.request(ProfileRequest::InsertField("biography".into(), String::new()));
+            }
             String::new()
         })
     }
