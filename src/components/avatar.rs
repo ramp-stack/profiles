@@ -42,8 +42,9 @@ impl AvatarProfiles {
 
     pub fn try_update(ctx: &mut Context, this: &mut Avatar, result: Result<(Vec<u8>, ImageOrientation), std::sync::mpsc::TryRecvError>) {
         if let Ok((bytes, orientation)) = result {
-            if let Ok(dynamic) =  image::load_from_memory(&bytes) {
+            if let Ok(dynamic) = image::load_from_memory(&bytes) {
                 let image = orientation.apply_to(image::DynamicImage::ImageRgba8(dynamic.to_rgba8()));
+                let image = image.resize_exact(256, 256, image::imageops::FilterType::Lanczos3);
                 let mut png_bytes = Vec::new();
                 image.write_to(&mut std::io::Cursor::new(&mut png_bytes), image::ImageFormat::Png).unwrap();
                 let base64_png = general_purpose::STANDARD.encode(&png_bytes);
