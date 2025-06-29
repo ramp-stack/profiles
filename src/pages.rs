@@ -179,7 +179,7 @@ impl BlockUser {
         let avatar = AvatarProfiles::new_with_block(ctx, &orange_name);
 
         let msg = format!("Are you sure you want to block {}?", username);
-        let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center);
+        let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center, None);
         let content = Content::new(Offset::Center, vec![Box::new(avatar), Box::new(text)]);
         let header = Header::stack(ctx, Some(back), "Block user", None);
 
@@ -206,7 +206,7 @@ impl UserBlocked {
         ProfilePlugin::block(ctx, &orange_name);
         let text_size = ctx.theme.fonts.size.h4;
         let msg = format!("{} has been blocked", ProfilePlugin::username(ctx, &orange_name));
-        let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center);
+        let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center, None);
         let avatar = AvatarProfiles::new_with_block(ctx, &orange_name);
         let content = Content::new(Offset::Center, vec![Box::new(avatar), Box::new(text)]);
 
@@ -238,7 +238,7 @@ impl UnblockUser {
     pub fn new(ctx: &mut Context, orange_name: OrangeName, on_exit: Box<dyn AppPage>) -> Self {
         let msg = format!("Are you sure you want to unblock {}?", ProfilePlugin::username(ctx, &orange_name));
         let text_size = ctx.theme.fonts.size.h4;
-        let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center);
+        let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center, None);
         let avatar = AvatarProfiles::new_with_unblock(ctx, &orange_name); 
         let content = Content::new(Offset::Center, vec![Box::new(avatar), Box::new(text)]);
 
@@ -272,7 +272,7 @@ impl UserUnblocked {
 
         let msg = format!("{} has been unblocked", ProfilePlugin::username(ctx, &orange_name));
         let text_size = ctx.theme.fonts.size.h4;
-        let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center);
+        let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center, None);
         let avatar = AvatarProfiles::new_with_unblock(ctx, &orange_name);
         let content = Content::new(Offset::Center, vec![Box::new(avatar), Box::new(text)]);
 

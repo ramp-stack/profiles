@@ -7,6 +7,14 @@ use crate::plugin::{ProfilePlugin, ProfileRequest};
 
 use pelican_ui::air::OrangeName;
 use crate::service::Profiles;
+use std::io::BufWriter;
+
+use image::codecs::png::PngEncoder;
+use image::{ExtendedColorType, ImageEncoder, ImageReader};
+
+use fast_image_resize::{IntoImageView, Resizer};
+use fast_image_resize::images::Image;
+use image::GenericImageView;
 
 use pelican_ui_std::{
     Avatar,
@@ -43,16 +51,23 @@ impl AvatarProfiles {
     pub fn try_update(ctx: &mut Context, this: &mut Avatar, result: Result<(Vec<u8>, ImageOrientation), std::sync::mpsc::TryRecvError>) {
         if let Ok((bytes, orientation)) = result {
             if let Ok(dynamic) = image::load_from_memory(&bytes) {
-                let image = orientation.apply_to(image::DynamicImage::ImageRgba8(dynamic.to_rgba8()));
-                let image = image.resize_exact(256, 256, image::imageops::FilterType::Lanczos3);
-                let mut png_bytes = Vec::new();
-                image.write_to(&mut std::io::Cursor::new(&mut png_bytes), image::ImageFormat::Png).unwrap();
-                let base64_png = general_purpose::STANDARD.encode(&png_bytes);
+                let src_image = orientation.apply_to(image::DynamicImage::ImageRgba8(dynamic.to_rgba8()));
+                let (w, h) = src_image.dimensions();
+                let s = 256.0 / w.min(h) as f32;
+                let (w, h) = ((w as f32 * s) as u32, (h as f32 * s) as u32);
+                let mut dst_image = Image::new(w, h, src_image.pixel_type().unwrap());
+                Resizer::new().resize(&src_image, &mut dst_image, None).unwrap();
+
+                let mut result_buf = BufWriter::new(Vec::new());
+                PngEncoder::new(&mut result_buf).write_image(dst_image.buffer(), w, h, src_image.color().into()).unwrap();
+                let result_buf = result_buf.into_inner().unwrap(); // get the inner Vec<u8>
+                let base64_png = general_purpose::STANDARD.encode(&result_buf);
 
                 let mut guard = ctx.get::<ProfilePlugin>();
                 let (plugin, ctx) = guard.get();
                 plugin.request(ProfileRequest::InsertField("avatar".to_string(), base64_png));
-                let asset_image = ctx.assets.add_image(image.into());
+                let img = image::load_from_memory(&result_buf).unwrap().to_rgba8();
+                let asset_image = ctx.assets.add_image(img);
 
                 this.set_content(AvatarContent::Image(asset_image));
             }
