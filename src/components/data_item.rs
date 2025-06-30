@@ -7,9 +7,11 @@ use pelican_ui_std::{ DataItem, Button };
 pub struct DataItemProfiles;
 impl DataItemProfiles {
     pub fn orange_name_item(ctx: &mut Context, orange_name: &OrangeName) -> DataItem {
-        let copy = orange_name.to_string();
+        let orange = orange_name.to_string();
+        let orange_name = orange.strip_prefix("orange_name:").unwrap_or(orange.as_str()).to_string();
+        let copy = orange_name.clone();
         let copy_button = Button::secondary(ctx, Some("copy"), "Copy", None, move |ctx: &mut Context| ctx.hardware.copy(copy.clone()));
-        DataItem::new(ctx, None, "Orange Name", Some(orange_name.to_string().as_str()), None, None, Some(vec![copy_button]))
+        DataItem::new(ctx, None, "Orange Name", Some(&orange_name), None, None, Some(vec![copy_button]))
     }
 
     pub fn biography_item(ctx: &mut Context, orange_name: &OrangeName) -> DataItem {

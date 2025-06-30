@@ -124,7 +124,7 @@ impl NameGenerator {
             .filter(|s| !s.trim().is_empty())
             .map(|s| s.trim().to_string())
             .collect();
-        let nouns = include_str!("../assets/animals.txt")
+        let nouns = include_str!("../assets/nouns.txt")
             .lines()
             .filter(|s| !s.trim().is_empty())
             .map(|s| s.trim().to_string())
