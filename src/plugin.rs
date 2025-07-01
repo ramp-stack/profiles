@@ -87,6 +87,14 @@ impl ProfilePlugin {
         })
     }
 
+    pub fn avatar(ctx: &mut Context, orange_name: &OrangeName) -> String {
+        let profiles = ctx.state().get_or_default::<Profiles>().clone();
+        let profile = profiles.0.get(orange_name).unwrap();
+        profile.get("avatar").map(ToString::to_string).unwrap_or_else(|| {
+            String::new()
+        })
+    }
+
     pub fn update(ctx: &mut Context, key: String, value: String) {
         let mut guard = ctx.get::<ProfilePlugin>();
         let plugin = guard.get().0;
