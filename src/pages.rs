@@ -22,11 +22,12 @@ use pelican_ui_std::{
     ButtonState,
 };
 
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
+use std::cell::RefCell;
 use std::sync::mpsc::{self, Receiver};
 use serde::{Serialize, Deserialize};
 
-pub type AccountActions = Arc<Mutex<Vec<(&'static str, Box<dyn FnMut(&mut Context) -> Box<dyn AppPage>>)>>>;
+pub type AccountActions = Rc<RefCell<Vec<(&'static str, Box<dyn FnMut(&mut Context) -> Box<dyn AppPage>>)>>>;
 
 #[derive(Debug, Component)]
 pub struct Account(Stack, Page, #[skip] Receiver<(Vec<u8>, ImageOrientation)>, #[skip] ButtonState);
@@ -112,8 +113,8 @@ impl AppPage for UserAccount {
     fn navigate(mut self: Box<Self>, ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
         match index {
             0 => Ok(self.2.take().unwrap()),
-            _ => match index > 0 && index - 1 < self.3.lock().unwrap().len() {
-                true => Ok((self.3.lock().unwrap().get_mut(index - 1).unwrap().1)(ctx)),
+            _ => match index > 0 && index - 1 < self.3.borrow().len() {
+                true => Ok((self.3.borrow_mut().get_mut(index - 1).unwrap().1)(ctx)),
                 false => Err(self),
             }
         }
@@ -132,7 +133,7 @@ impl UserAccount {
         let username = ProfilePlugin::username(ctx, &orange_name);
         // let is_blocked = ProfilePlugin::has_blocked(ctx, &orange_name, &my_orange_name);
 
-        let icon_actions = actions.lock().unwrap().iter().enumerate().map(|(i, (icon, _))| {
+        let icon_actions = actions.borrow_mut().iter().enumerate().map(|(i, (icon, _))| {
             (*icon, Box::new(move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(i))) as Box<dyn FnMut(&mut Context)>)
         }).collect::<Vec<_>>();
 

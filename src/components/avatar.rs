@@ -5,7 +5,6 @@ use pelican_ui::hardware::ImageOrientation;
 use crate::plugin::{ProfilePlugin, ProfileRequest};
 
 use pelican_ui::air::OrangeName;
-use crate::service::Profiles;
 
 use pelican_ui_std::{
     Avatar,
