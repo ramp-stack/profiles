@@ -2,7 +2,7 @@ use pelican_ui::Context;
 use pelican_ui::air::OrangeName;
 use crate::plugin::ProfilePlugin;
 
-use pelican_ui_std::{ DataItem, Button };
+use pelican_ui_std::{ DataItem, Button, NavigateEvent };
 
 pub struct DataItemProfiles;
 impl DataItemProfiles {
@@ -24,5 +24,10 @@ impl DataItemProfiles {
         let copy = address.to_string();
         let copy_button = Button::secondary(ctx, Some("copy"), "Copy", None, move |ctx: &mut Context| ctx.hardware.copy(copy.clone()));
         DataItem::new(ctx, None, "Bitcoin address", Some(address), None, None, Some(vec![copy_button]))
+    }
+
+    pub fn connect_computer(ctx: &mut Context) -> DataItem {
+        let link_button = Button::secondary(ctx, Some("link"), "Connect Computer", None, move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(2)));
+        DataItem::new(ctx, None, "Connect to a Computer", Some("Connect this device to a laptop or desktop computer to back up accounts or create a savings wallet."), None, None, Some(vec![link_button]))
     }
 }
