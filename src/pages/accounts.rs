@@ -26,19 +26,18 @@ use pelican_ui_std::{
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{self, Receiver};
 use serde::{Serialize, Deserialize};
+use std::rc::Rc;
+use std::cell::RefCell;
 
-pub type AccountActions = Arc<Mutex<Vec<(&'static str, Box<dyn FnMut(&mut Context) -> Box<dyn AppPage>>)>>>;
+pub type AccountActions = Rc<RefCell<Vec<(&'static str, Box<dyn FnMut(&mut Context) -> Box<dyn AppPage>>)>>>;
 
 #[derive(Debug, Component)]
 pub struct Account(Stack, Page, #[skip] Receiver<(Vec<u8>, ImageOrientation)>, #[skip] ButtonState);
 
 impl AppPage for Account {
     fn has_nav(&self) -> bool { true }
-    fn navigate(self: Box<Self>, ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
-        match index {
-            2 => Ok(Box::new(DownloadDesktop::new(ctx))),
-            _ => Err(self)
-        }
+    fn navigate(self: Box<Self>, _ctx: &mut Context, _index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
+        Err(self)
     }
 }
 
@@ -58,7 +57,6 @@ impl Account {
 
         let address_item = DataItemProfiles::address_item(ctx, "");
         let orange_name_item = DataItemProfiles::orange_name_item(ctx, &orange_name);
-        let connect_item = DataItemProfiles::connect_computer(ctx);
         
         let (sender, receiver) = mpsc::channel();
         let avatar_content = AvatarContentProfiles::from_orange_name(ctx, &orange_name);
@@ -67,7 +65,7 @@ impl Account {
         let save = Button::disabled(ctx, "Save", move |ctx: &mut Context| ctx.trigger_event(UpdateProfileEvent));
 
         let bumper = Bumper::single_button(ctx, save);
-        let content = Content::new(Offset::Start, vec![Box::new(avatar), Box::new(name_input), Box::new(bio_input), Box::new(orange_name_item), Box::new(address_item), Box::new(connect_item)]);
+        let content = Content::new(Offset::Start, vec![Box::new(avatar), Box::new(name_input), Box::new(bio_input), Box::new(orange_name_item), Box::new(address_item)]);
         let header = Header::home(ctx, "Account", None);
 
         Account(Stack::center(), Page::new(Some(header), content, Some(bumper)), receiver, ButtonState::Default)
@@ -117,8 +115,8 @@ impl AppPage for UserAccount {
     fn navigate(mut self: Box<Self>, ctx: &mut Context, index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
         match index {
             0 => Ok(self.2.take().unwrap()),
-            _ => match index > 0 && index - 1 < self.3.lock().unwrap().len() {
-                true => Ok((self.3.lock().unwrap().get_mut(index - 1).unwrap().1)(ctx)),
+            _ => match index > 0 && index - 1 < self.3.borrow().len() {
+                true => Ok((self.3.borrow_mut().get_mut(index - 1).unwrap().1)(ctx)),
                 false => Err(self),
             }
         }
@@ -137,7 +135,7 @@ impl UserAccount {
         let username = ProfilePlugin::username(ctx, &orange_name);
         // let is_blocked = ProfilePlugin::has_blocked(ctx, &orange_name, &my_orange_name);
 
-        let icon_actions = actions.lock().unwrap().iter().enumerate().map(|(i, (icon, _))| {
+        let icon_actions = actions.borrow_mut().iter().enumerate().map(|(i, (icon, _))| {
             (*icon, Box::new(move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(i))) as Box<dyn FnMut(&mut Context)>)
         }).collect::<Vec<_>>();
 
