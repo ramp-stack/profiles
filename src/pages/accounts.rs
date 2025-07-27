@@ -68,7 +68,7 @@ impl Account {
 
         let bumper = Bumper::single_button(ctx, save);
         let content = Content::new(Offset::Start, vec![Box::new(avatar), Box::new(name_input), Box::new(bio_input), Box::new(orange_name_item), Box::new(address_item), Box::new(connect_item)]);
-        let header = Header::home(ctx, "Account");
+        let header = Header::home(ctx, "Account", None);
 
         Account(Stack::center(), Page::new(Some(header), content, Some(bumper)), receiver, ButtonState::Default)
     }

@@ -73,7 +73,7 @@ impl DownloadDesktop {
         illustrations.insert(ctx, "desktop_wallet", "desktop_wallet.png");
         ctx.theme.brand.illustrations = illustrations;
 
-        let desktop = ctx.theme.brand.illustrations.get("desktop_wallet").clone();
+        let desktop = ctx.theme.brand.illustrations.get("desktop_wallet").unwrap().clone();
         let text_size = ctx.theme.fonts.size.h4;
         let desktop = Brand::new(desktop, (300.0, 150.0));
         let instructions = ExpandableText::new(ctx, "Install the orange desktop app on your laptop or desktop computer.", TextStyle::Heading, text_size, Align::Center, None);
