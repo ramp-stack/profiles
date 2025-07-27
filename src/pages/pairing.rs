@@ -9,7 +9,6 @@ use crate::events::UpdateProfileEvent;
 use pelican_ui::air::OrangeName;
 use crate::plugin::ProfilePlugin;
 use crate::components::{AvatarProfiles, AvatarContentProfiles, TextInputProfiles, DataItemProfiles};
-use bitcoin::{QRCodeScanner, QRCodeScannedEvent};
 
 use pelican_ui_std::{
     AppPage, Stack, Page,
@@ -31,10 +30,10 @@ pub struct ScanQR(Stack, Page, #[skip] Option<String>);
 
 impl AppPage for ScanQR {
     fn has_nav(&self) -> bool { false }
-    //fn navigate(self: Box<Self>, ctx: &mut Context, _index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
-        Ok(Box::new(Address::new(ctx, self.2)))
+    fn navigate(self: Box<Self>, ctx: &mut Context, _index: usize) -> Result<Box<dyn AppPage>, Box<dyn AppPage>> {
+        // Ok(Box::new(Address::new(ctx, self.2)))
         Ok(self)
-    //}
+    }
 }
 
 impl ScanQR {
