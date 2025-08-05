@@ -9,6 +9,9 @@ use pelican_ui::air::{OrangeName, Id, PublicItem, Filter, Request, Service as Ai
 
 use serde::{Serialize, Deserialize};
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct TempAccountValues(pub String, pub String);
+
 static PROFILE: LazyLock<Id> = LazyLock::new(|| Id::hash(&"ProfileV1".to_string()));
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]

@@ -26,6 +26,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::sync::mpsc::{self, Receiver};
 use serde::{Serialize, Deserialize};
+use crate::service::TempAccountValues;
 
 pub type AccountActions = Rc<RefCell<Vec<(&'static str, Box<dyn FnMut(&mut Context) -> Box<dyn AppPage>>)>>>;
 
@@ -39,8 +40,6 @@ impl AppPage for Account {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-struct TempAccountValues(String, String);
 
 impl Account {
     pub fn new(ctx: &mut Context) -> Self {
