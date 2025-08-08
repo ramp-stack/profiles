@@ -62,7 +62,7 @@ impl Account {
         let save = Button::disabled(ctx, "Save", move |ctx: &mut Context| ctx.trigger_event(UpdateProfileEvent));
 
         let bumper = Bumper::single_button(ctx, save);
-        let content = Content::new(Offset::Start, vec![Box::new(avatar), Box::new(name_input), Box::new(bio_input), Box::new(orange_name_item), Box::new(address_item)]);
+        let content = Content::new(ctx, Offset::Start, vec![Box::new(avatar), Box::new(name_input), Box::new(bio_input), Box::new(orange_name_item), Box::new(address_item)]);
         let header = Header::home(ctx, "Account", None);
 
         Account(Stack::center(), Page::new(Some(header), content, Some(bumper)), receiver, ButtonState::Default)
@@ -141,7 +141,7 @@ impl UserAccount {
         let orange_name_item = DataItemProfiles::orange_name_item(ctx, &orange_name);
         let about_me = DataItemProfiles::biography_item(ctx, &orange_name);
         let avatar = AvatarProfiles::user(ctx, &orange_name);
-        let content = Content::new(Offset::Start, vec![Box::new(avatar), Box::new(buttons), Box::new(about_me), Box::new(orange_name_item), Box::new(address)]);
+        let content = Content::new(ctx, Offset::Start, vec![Box::new(avatar), Box::new(buttons), Box::new(about_me), Box::new(orange_name_item), Box::new(address)]);
 
         let back = IconButton::navigation(ctx, "left", move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0)));
         let header = Header::stack(ctx, Some(back), &username, None);
@@ -180,7 +180,7 @@ impl BlockUser {
 
         let msg = format!("Are you sure you want to block {}?", username);
         let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center, None);
-        let content = Content::new(Offset::Center, vec![Box::new(avatar), Box::new(text)]);
+        let content = Content::new(ctx, Offset::Center, vec![Box::new(avatar), Box::new(text)]);
         let header = Header::stack(ctx, Some(back), "Block user", None);
 
         BlockUser(Stack::default(), Page::new(Some(header), content, Some(bumper)), Some(on_exit), orange_name)
@@ -208,7 +208,7 @@ impl UserBlocked {
         let msg = format!("{} has been blocked", ProfilePlugin::username(ctx, &orange_name));
         let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center, None);
         let avatar = AvatarProfiles::new_with_block(ctx, &orange_name);
-        let content = Content::new(Offset::Center, vec![Box::new(avatar), Box::new(text)]);
+        let content = Content::new(ctx, Offset::Center, vec![Box::new(avatar), Box::new(text)]);
 
         let close = IconButton::close(ctx,  move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0)));
         let button = Button::close(ctx, "Done", move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0)));
@@ -240,7 +240,7 @@ impl UnblockUser {
         let text_size = ctx.theme.fonts.size.h4;
         let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center, None);
         let avatar = AvatarProfiles::new_with_unblock(ctx, &orange_name); 
-        let content = Content::new(Offset::Center, vec![Box::new(avatar), Box::new(text)]);
+        let content = Content::new(ctx, Offset::Center, vec![Box::new(avatar), Box::new(text)]);
 
         let confirm = Button::primary(ctx, "Unblock", move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(1)));
         let cancel = Button::close(ctx, "Cancel", move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0)));
@@ -274,7 +274,7 @@ impl UserUnblocked {
         let text_size = ctx.theme.fonts.size.h4;
         let text = ExpandableText::new(ctx, &msg, TextStyle::Heading, text_size, Align::Center, None);
         let avatar = AvatarProfiles::new_with_unblock(ctx, &orange_name);
-        let content = Content::new(Offset::Center, vec![Box::new(avatar), Box::new(text)]);
+        let content = Content::new(ctx, Offset::Center, vec![Box::new(avatar), Box::new(text)]);
 
         let close = IconButton::close(ctx, move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0)));
         let button = Button::close(ctx, "Done", move |ctx: &mut Context| ctx.trigger_event(NavigateEvent(0)));
