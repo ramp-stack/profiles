@@ -3,7 +3,6 @@ name = "profiles"
 version = "0.1.2"
 edition = "2024"
 authors = ["Ella Mae <ellaammae@email.com>"]
-edition = "2021"
 description = "A Rust crate built on RAMP that provides all the tools to configure AIR profiles."
 license = "BSD-3-Clause"
 repository = "https://github.com/ramp-stack/profiles"
