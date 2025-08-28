@@ -17,10 +17,11 @@ use pelican_ui_std::{
     TextStyle, Content,
     Offset, TextInput,
     Button, Bumper, 
-    IconButtonRow,
     NavigateEvent,
     ButtonState,
 };
+
+use crate::components::IconButtonRow;
 
 use std::rc::Rc;
 use std::cell::RefCell;
