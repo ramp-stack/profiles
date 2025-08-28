@@ -1,6 +1,6 @@
 [package]
 name = "profiles"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 authors = ["Ella Mae <ellaammae@email.com>"]
 description = "A Rust crate built on RAMP that provides all the tools to configure AIR profiles."
@@ -14,5 +14,5 @@ serde = "1.0.219"
 serde_json = "1.0.140"
 image = "0.25.6"
 uuid = { version = "1.17.0", features = ["v4", "js"] }
-pelican_ui = {path="../pelican_ui"}
-pelican_ui_std = {path="../pelican_ui_std"}
+pelican_ui = "1.1.4"
+pelican_ui_std = "0.2.5"
